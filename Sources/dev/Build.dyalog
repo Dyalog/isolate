@@ -13,7 +13,9 @@
 
  'isolate'⎕NS''
  BuildCovers
- ⎕←⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate -nolink'
+ :For file :In 'isolate.ynys.dyalog' 'APLProcess' 'RPCServer'
+     ⎕←⎕SE.SALT.Load'⍵\Sources\',file,' -target=isolate -nolink'
+ :EndFor
 
  :If 0=⍴rev←⎕CMD'subwcrev ',path
      ⎕←'NB: Unable to get SVN revision information!'

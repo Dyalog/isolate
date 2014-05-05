@@ -11,6 +11,8 @@
  :With isolate
      AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.AddServer⊢⍵ ⋄ ⍺(#.isolate.ynys.AddServer)⍵}
      Config←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.Config⊢⍵ ⋄ ⍺(#.isolate.ynys.Config)⍵}
+     InternalState←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(#.isolate.ynys.InternalState)⍵}
+     LastError←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(#.isolate.ynys.LastError)⍵}
      New←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.New⊢⍵ ⋄ ⍺(#.isolate.ynys.New)⍵}
      StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(#.isolate.ynys.StartServer)⍵}
      ll←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.ll⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.ll)⍵}

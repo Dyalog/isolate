@@ -433,6 +433,12 @@
 ⍝ all the other stuff as this seems to do it ok.
      
       }
+   
+      getDefaultWS←{
+          ∨/⍵⍷⎕WSID:⎕WSID
+          ⍵ ⍝ ⍵ is normally 'isolate'
+⍝ use exact current ws if looks like an isolate development ws
+      }
 
       getDRC←{⍺←⊢
           ⍵≠#:⍵                          ⍝ if not # it must exist
@@ -932,7 +938,7 @@
           z←{here.options←⎕NS''
               options.debug←0                  ⍝ cut back on error
               options.drc←#                    ⍝ copy into # if # and missing
-              options.workspace←'isolate'      ⍝ load current ws for remotes?
+              options.workspace←getDefaultWS'isolate' ⍝ load current ws for remotes?
               options.listen←0                 ⍝ can isolate call back to ws
               options.processors←processors ⍬  ⍝ no. processors (fn ignores ⍵)
               options.processes←1              ⍝ per processor
