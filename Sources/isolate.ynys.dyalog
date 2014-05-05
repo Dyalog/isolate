@@ -1,33 +1,47 @@
-﻿:namespace ynys  
-⍝ Version edited by Morten
+﻿:namespace ynys
 ⍝ ## ←→ #.isolate
 
     (⎕IO ⎕ML)←0 1
-
+    retry_limit←20      ⍝ How many retries 
+    retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
+  
       AddServer←{⍺←⊢
-          msg←messages'⍝- ' ⍝
+          msg←messages'⍝- '
           'server'≡Config'status':0⊃msg
           ''⍬≢0/¨⍵:1⊃msg
           (addr ports)←⍵
           {1∊∊∘∊⍨⍵⊣⎕ML←0}addr ports:2⊃msg
           z←Config'status' 'client'
           z←Init''
-          ss←session
+          ss←session.
           id←(⍳≢ports)+1+0⌈⌈/⊣/ss.procs
           ss.procs⍪←id,0,(⊂addr),⍪ports
           1:1
-⍝ see notes
 ⍝- Session already started as server
 ⍝- Argument must be 'ip-address' (ip-ports)
 ⍝- IP-address nor IP-ports can be empty
       }
+      
+    ∇ r←DRCClt args;count
+      ⍝ Create a DRC Client, looping a bit
+     
+      count←0
+      :While 0≠⊃r←DRC.Clt args ⍝ Cannot connect
+          :If 1111=⊃r
+              {}⎕DL retry_interval×count+←1 ⍝ longer wait each time
+          :Else
+              ('Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
+          :EndIf
+      :Until count≥retry_limit
+    ∇
 
       Config←{⍺←⊢
-          newSession'':setDefaults ⍵  ⍝ else Init has already run
+          newSession'':{              ⍝ else Init has already run
+              0::(⊃⎕DM)⎕SIGNAL ⎕EN
+              setDefaults ⍵
+          }⍵
           trapErr''::signal''
-          res←options getset ⍵
-          1=≡⍵:⊢res
-          res⊣setOption/⍵
+          getSet ⍵
      
 ⍝ set or query single option
 ⍝ ⍵         '' | name | name value
@@ -42,38 +56,56 @@
           ⎕THIS.⎕IO←0
           new←newSession''
           ~new:⊢0                                 ⍝ 0 - already started
-          (⍎⍕↓⎕NL 9).⎕IO←0
           here.iSpace←here←⎕THIS
           z←here.(proxyClone←⎕NS'').⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)
           ss←here.session←⎕NS''
           z←setDefaults''
           op←options
+          z←getSet'debug'op.debug                 ⍝ on or off
+          trapErr''::signal''
           ##.DRC←here.DRC←getDRC op.drc
           z←DRC.Init ⍬
           here.(signal←⎕SIGNAL/∘{(0⊃⎕DM)⎕EN})
           ss.orig←whoami''
           listen←(ss.homeport←7051)∘localServer   ⍝ ⌽⊖'ISOL'
           ss.listen←10 listen until⊢⍣op.listen⊢0  ⍝ "calls back"?
-     
+          ss.errors←,⊂0 0('' '')                  ⍝ ⎕EN ⎕DM for latest group
           ss.nextid←2⊃⎕AI                         ⍝ isolate id
           z←⎕TPUT ss.callback←1+(2*15)|+/⎕AI      ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
      
           ((ws rt)iso)←op.(workspace runtime)'-isolate=isolate'
-          ws←1⌽'""',addWSpath ws~'"'   ⍝ if no path ('\/')
+          ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
      
-          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-Port=',⍕⍵,iso}¨ports
-          ss.procs←((1⊃⎕AI)+⍳⍴procs),procs,(⊂ss.orig),⍪ports
-          ss.assoc←dix'proc iso busy inuse err msg'(6⍴⍬ ⍬)
-     
-          z←'debug'setOption op.debug
+          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
+          pids←(1⊃⎕AI)+⍳⍴procs
+          procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids
+          pclts←pids{0≠⊃z←DRCClt('PROC',⍕⍺)ss.orig ⍵:'' ⋄ 1⊃z}¨ports
+          0∊≢¨pclts:'UNABLE TO CONNECT TO NEW PROCESSES'⎕SIGNAL 6
+          ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
+          ss.assoc←dix'proc iso busy seq'(4⍴⍬ ⍬)
+          ss.assoc.(group←{seq⊃⍨iso⍳⍵})           ⍝ ephemeral group id
      
           ss.started←sessionStart''               ⍝ last thing so we know
           1:⊢1                                    ⍝ 1 - newly started
 ⍝ Init if new ss
 ⍝ ⍵ ?
 ⍝ ← 1 | 0 - 1=started, 0=already
+      }
+
+      InternalState←{⍺←⊢
+          newSession'':⍳0 0
+          {⍵.({⍵,⍪⍎⍕⍵}↓⎕NL 2)}⍣('namespace'≢minuscule ⍵)⊢session.assoc
+⍝
+      }
+
+      LastError←{⍺←⊢
+          newSession'':⍳0 0
+          errors←↑¨↑session.errors←{⍺/⍨⍵=⊢/⍵}∘(⊣/↑)⍨session.errors
+     ⍝ ↑ all in same group as 2-cols ⎕EN ⎕DM
+          {(≢⍵),1↓⍺}⌸errors
+⍝
       }
 
       New←{⍺←⊢
@@ -90,12 +122,6 @@
           z←1(700⌶)¨proxy
           1:shape⍴proxy
 ⍝ simulate isolate primitive: '¤'
-⍝ see notes
-      }
-
-      OS←{⍺←⊢
-          ⍵{⍺≡(⍴⍺)↑⍵}⊃#.⎕WG'APLVersion'
-⍝ ⍵ 'Win' 'Lin' 'AIX' &.
       }
 
       StartServer←{⍺←⊢
@@ -103,13 +129,12 @@
           ~newSession'':(0⊃msg),' ',options.status
           z←Config'status' 'server'
           z←Init''
-          address ports←(session.orig)(∪⊢/session.procs) ⍝ notes
+          address ports←(session.orig)(∪⊢/session.procs)
           info←(1 2⊃¨⊂msg),⍪address ports
           res←⊃,/⍕¨,(4 5 6 7⊃¨⊂msg),⍪address(⊃ports)(⍴ports)''
           ⎕←⍪,' ',⍪info(3⊃msg)res
           1:''
      
-⍝ see notes
 ⍝- Session already started as
 ⍝- IP Address:
 ⍝- IP Ports:
@@ -130,22 +155,17 @@
       }
 
       and←{⍺←⊢
-          ⍺⍺ ⍵:⍵⍵ ⍵
+          ⍺⍺⊣⍵:⍵⍵⊣⍵
           0
 ⍝ left to right checking
-⍝ only try ⍵⍵ if ⍺⍺ true
+⍝ try ⍵⍵ only if ⍺⍺ true
       }
 
       argType←{⍺←⊢
           trapErr''::signal''
           (0∊⍴)⍵:⍺.⎕NS''                                         ⍝ empty
           (0=≡)and{9=⎕NC'⍵'}⍵:⍵                                  ⍝ ns
-          (1=≡)and(''≡0⍴⊢)⍵:{                                    ⍝ ws
-              z←⎕NS''
-              11::'WS NOT FOUND'⎕SIGNAL 11
-              6::⍵         ⍝ value error implies copy ok
-              z←{}z.⎕CY ⍵  ⍝ force value error → return ⍵
-          }⍵
+          (1=≡)and(''≡0⍴⊢)⍵:checkWs ⍵
           (2=≡)and(''≡0⍴⊃)⍵:⍺.⎕NS↑⍵                              ⍝ nl
           ⎕SIGNAL 11
 ⍝ ⍺ caller
@@ -165,12 +185,21 @@
 ⍝ none of the code above is redundant. 2014-01-09
       }
 
+      checkWs←{⍺←⊢
+                                   ⍝ ⍵ IS a string
+          z←⎕NS''
+          0::'WS NOT FOUND'⎕SIGNAL ⎕EN  ⍝ any error bar Value
+          6::⍵                          ⍝ value error implies copy ok
+          z←{}'⎕IO'z.⎕CY ⍵              ⍝ force value error → return ⍵
+⍝
+      }
+
       cleanup←{⍺←⊢
           trapErr''::signal''
           (chrid port numid)←⍵.(chrid port numid)
           ⎕←⍪'.'/⍨options.debug
           (ns←⎕NS proxyClone).(iD iSpace)←⍵ iSpace    ⍝ recreate temp proxy
-          rem←{session.assoc.(iso proc busy inuse err msg⌿⍨←⊂iso≠⍵)}
+          rem←{session.assoc.(iso proc busy seq⌿⍨←⊂iso≠⍵)}
           11::rem numid                               ⍝ DRC reported errors
           z←ns.iSend{⍵(1('{#.⎕EX''',⍵,'''}')0)}chrid  ⍝ expunge remote namespace
           z←DRC.Close chrid
@@ -183,23 +212,18 @@
 ⍝ port  on which process is listening
       }
 
-      connect←{⍺←⊢
-          count←⍺
-          (chrid host port data)←⍵
-          close←{⎕DL 0.2⊣DRC.Close ⍵}
-          rpt←{⍝ 0=⍬⍴⍵:⍵  ⍝ count or subsequent res - see below
-              0≠⍬⍴res←DRC.Clt chrid host port:res⊣close chrid      ⍝ close
-              0≠⍬⍴res←DRC.Send chrid data:res⊣close chrid          ⍝ on any
-              0≠⍬⍴res←DRC.Wait 1⊃res:res⊣close chrid               ⍝ error
-              res                                                ⍝ ok
-          }
-          count rpt until(0=⊣/)1
+    ∇ r←connect(chrid host port data);count
+      :If 0=⊃r←DRCClt chrid host port ⍝ DRCClt will retry
+      :AndIf 0=⊃r←DRC.Send chrid data       ⍝ on any
+      :AndIf 0=⊃r←DRC.Wait 1⊃r              ⍝ error
+      :Else ⋄ {}DRC.Close chrid
+      :EndIf
 ⍝ connect and send Initial payload
 ⍝ ⍺     attempts
 ⍝ ⍵     client-id ip-port data
 ⍝ data  function and argument
 ⍝ ←     final return from DRC
-      }
+    ∇
 
       dateNo←{⍺←⊢
           ⊢2 ⎕NQ'.' 'DateToIDN'⍵
@@ -227,7 +251,6 @@
 ⍝ ⍺ target space
 ⍝ ⍵ encoded list
 ⍝   decode list and execute requisite syntax in target.
-⍝ see #.isolate.notes
       }
 
       derv←{⍺←⊢
@@ -297,67 +320,6 @@
 ⍝ ⍺ larg to iEvaluate - larg to isolate.dyad
 ⍝ ⍵ rarg to iEvaluate - name class syntax [rarg | PropertyArguments]
 ⍝   creates list that encodes syntax and includes arguments
-⍝ see #.isolate.notes
-      }
-
-      errs←{⍺←⊢
-          f←{
-              1 'WS FULL'
-              2 'SYNTAX ERROR'
-              3 'INDEX ERROR'
-              4 'RANK ERROR'
-              5 'LENGTH ERROR'
-              6 'VALUE ERROR'
-              7 'FORMAT ERROR'
-              10 'LIMIT ERROR'
-              11 'DOMAIN ERROR'
-              12 'HOLD ERROR'
-              13 'OPTION ERROR'
-              16 'NONCE ERROR'
-              18 'FILE TIE ERROR'
-              19 'FILE ACCESS ERROR'
-              20 'FILE INDEX ERROR'
-              21 'FILE FULL'
-              22 'FILE NAME ERROR'
-              23 'FILE DAMAGED'
-              24 'FILE TIED'
-              25 'FILE TIED REMOTELY'
-              26 'FILE SYSTEM ERROR'
-              28 'FILE SYSTEM NOT AVAILABLE'
-              30 'FILE SYSTEM TIES USED UP'
-              31 'FILE TIE QUOTA USED UP'
-              32 'FILE NAME QUOTA USED UP'
-              34 'FILE SYSTEM NO SPACE'
-              35 'FILE ACCESS ERROR - CONVERTING FILE'
-              38 'FILE COMPONENT DAMAGED'
-              52 'FIELD CONTENTS RANK ERROR'
-              53 'FIELD CONTENTS TOO MANY COLUMNS'
-              54 'FIELD POSITION ERROR'
-              55 'FIELD SIZE ERROR'
-              56 'FIELD CONTENTS/TYPE MISMATCH'
-              57 'FIELD TYPE/BEHAVIOUR UNRECOGNISED'
-              58 'FIELD ATTRIBUTES RANK ERROR'
-              59 'FIELD ATTRIBUTES LENGTH ERROR'
-              60 'FULL-SCREEN ERROR'
-              61 'KEY CODE UNRECOGNISED'
-              62 'KEY CODE RANK ERROR'
-              63 'KEY CODE TYPE ERROR'
-              70 'FORMAT FILE ACCESS ERROR'
-              71 'FORMAT FILE ERROR'
-              72 'NO PIPES'
-              76 'PROCESSOR TABLE FULL'
-              84 'TRAP ERROR'
-              90 'EXCEPTION'
-              92 'TRANSLATION ERROR'
-              99 'INTERNAL ERROR'
-              1003 'INTERRUPT'
-              1005 'EOF INTERRUPT'
-              1006 'TIMEOUT'
-              1007 'RESIZE'
-              1008 'DEADLOCK'
-          }
-          ↑⍎¨1↓¯1↓⎕NR'f'
-⍝
       }
 
       execute←{⍺←⊢
@@ -376,10 +338,10 @@
           tnm←snm∘⊣⍣(tgt≡tnm)⊢tnm   ⍝ dflt tnames  - snames
           ss←⍕src
           trap←'⋄0::(⊃⍬⍴⎕dm)⎕signal⎕en⋄'
-          fix←{
+          fix←{op←4=src.⎕NC ⍵
               (aa ww)←2↑(0 2⊃src.⎕AT ⍵)⍴'⍺⍺' '⍵⍵'
 ⍝         tgt.⎕FX(⍺,'←{⍺←⊢')trap('⍵≡⍺⍵:',aa,ss,'.',⍵,ww,'⊢⍵')('⍺(',aa,ss,'.',⍵,ww,')⍵')'}'
-              tgt.⎕FX,⊂⍺,'←{⍺←⊢',trap,'⍵≡⍺⍵:',aa,ss,'.',⍵,ww,'⊢⍵⋄⍺(',aa,ss,'.',⍵,ww,')⍵}'
+              tgt.⎕FX,⊂⍺,'←{⍺←⊢',trap,(op/'⍵≡⍺⍵:',aa,ss,'.',⍵,ww,'⊢⍵⋄'),'⍺(',aa,ss,'.',⍵,ww,')⍵}'
           }
           z←tnm fix¨snm
           1:1
@@ -390,16 +352,9 @@
 ⍝ snms      names of fns & ops therein
 ⍝ tgt       ref to contain fns to call - dflt #
 ⍝ tnms      corresponding names in tgt - dflt snms
-⍝ tgt.tnm←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(   #.src.snm   )⍵} ⍝ function
-⍝ tgt.tnm←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(⍺⍺ #.src.snm   )⍵} ⍝ adverb
-⍝ tgt.tnm←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(⍺⍺ #.src.snm ⍵⍵)⍵} ⍝ conjunction
-      }
-
-      f01←{⍺←⊢
-          op←{}
-          z←⎕FX,⊂'op←{',⍵,'←⍺⍺ ⋄ ⍵.⎕NS''',⍵,'''}'
-          ⍺⍺ op callerSpace''
-⍝ possible alternative to fnSpace
+⍝ tgt.tnm←{⍺←⊢⋄0::(⊃⍬⍴⎕DM)⎕SIGNAL⎕EN⋄                      ⍺(  #.src.snm  )⍵} ⍝ function
+⍝ tgt.tnm←{⍺←⊢⋄0::(⊃⍬⍴⎕DM)⎕SIGNAL⎕EN⋄ ⍵≡⍺⍵:⍺⍺#.src.snm  ⊢⍵⋄⍺(⍺⍺#.src.snm  )⍵} ⍝ adverb
+⍝ tgt.tnm←{⍺←⊢⋄0::(⊃⍬⍴⎕DM)⎕SIGNAL⎕EN⋄ ⍵≡⍺⍵:⍺⍺#.src.snm⍵⍵⊢⍵⋄⍺(⍺⍺#.src.snm⍵⍵)⍵} ⍝ conjunction
       }
 
       fnSpace←{⍺←⊢
@@ -449,24 +404,60 @@
 ⍝
       }
 
-      getset←{⍺←⊢
-          ⊢⍺.{
-              0∊⍴⍵:1↓{⍵,⍪⍎¨⍵}'0',⎕NL-2.1 9.1 9.2
-              one←1=≡⍵
-              two←one<2=≢⍵
-              nam←⊃⍣two⊢⍵
-              ~1∊2.1 9.1 9.2=⎕NC⊂nam:('Unknown parameter: ',nam)⎕SIGNAL 11
-              old←⍎nam
-              one:old
-              two:old⊣{⍎⍺,'←⍵'}/⍵
-              ⎕SIGNAL 11
-          }⍵
+      getSet←{⍺←⊢
+     
+          0∊⍴⍵:options.({⍵,⍪⍎⍕⍵}↓⎕NL 2 9)
+          one←1=≡⍵
+          two←one<(,2)≡⍴⍵
+          sig11←⎕SIGNAL∘11
+          msg←'Argument should be '''', name or (name value)'
+          one⍱two:sig11 msg
+          (nam new)←⊂⍣one⊢⍵
+          ''≢0⍴nam:sig11 msg
+          nam←minuscule nam
+          ~(⊂nam)∊options.⎕NL-2 9:sig11'Unknown parameter: ',nam
+          old←options.⍎nam
+          one:old
+     
+⍝ then two
+          and←{⍺⍺⊣⍵:⍵⍵⊣⍵ ⋄ 0}
+          (range type)←(domains types).⍎⊂nam
+          s b i r←'SBIR'=type
+          msg←nam,' should be a',⍕s b i r/'string' 'boolean' 'integer' 'ref'
+          ok←b and(⊢≡1=⊢)new
+          ok←ok∨i and(0≡∊)and(⊢=⌊)new
+          ok←ok∨s and{''≡0⍴⍵}new
+          ok←ok∨r and{9=⎕NC'⍵'}new
+          ~ok:sig11 msg
+          ok←ok∧((1=⍴)∨(⊂new)∊⊢)range
+          ~ok:sig11⍕nam,' should be one of:',range
+     
+          (ws db)←'workspace' 'debug'∊⊂nam          ⍝ special
+          0::(⊃⎕DM)⎕SIGNAL ⎕EN                      ⍝
+          z←checkWs⍣ws⊢new                          ⍝
+          z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new    ⍝ cases
+     
+          old⊣nam options.{⍎⍺,'←⍵'}new
+     
+⍝    }⍵
 ⍝ ⍺ target space
 ⍝ ⍵ '' | name | name value
 ⍝ ← (⍵:'') all names and values
 ⍝   (⍵:name) value
 ⍝   (⍵:name value) value re-assigned
 ⍝ called by both Config and setDefaults
+      }
+
+      isoGroup←{⍺←⊢
+          ≥/0 1∊{9∊⎕NC'⍵'}¨iso←,⍵:
+          0∊was←0(700⌶)¨iso:{}was(700⌶)¨iso
+          z←1(700⌶)¨iso⊣ids←iso.iD.numid
+          (session.nextid grp)←2+session.nextid
+          ⊢ids session.assoc.{((iso∊⍺)/seq)←⍵}grp
+     
+⍝ ⍵ array of isolates
+⍝   group all in new unique group
+⍝ ← group id
       }
 
       isoStart←{⍺←⊢
@@ -492,7 +483,8 @@
               }''
               (⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
           }
-          ⎕TRAP←0 'C' 'f00⍬'
+          ⍝ ⎕TRAP←0 'C' 'f00⍬'
+          ⎕TRAP←0 'S' ⍝ /// Debugging
      
           ##.DRC←⎕THIS.DRC←getDRC #
           ##.RPCServer.Boot
@@ -511,13 +503,13 @@
 ⍝ ss.procs contains all proc ids; assoc.(busy/proc) only those with busy isos
           z←⎕TGET ss.assockey         ⍝ see Init
           procs←{(num distrib ¯1+⊢/⍵)⌿⊣/⍵},∘≢⌸(⊣/ss.procs),ss.assoc.(busy/proc)
-          ss.assoc.(iso proc inuse busy err msg),←num⍴¨numid procs 1 1 0 0
-          z←⎕TPUT ss.assockey
+          ss.assoc.(iso proc busy seq),←num⍴¨numid procs 1(⌊/numid)
+          z←⎕TPUT ss.assockey   ⍝ ↑ all have same "seq" see "group←{" in Init
      
-          (host port)←↓⍉¯2↑⍤1⊢{(⊂(⊣/⍵)⍳procs)⌷⍵}ss.procs  ⍝ notes
+          (host port)←↓⍉{⍵[⍵[;0]⍳procs;2 3]}ss.procs
           data←↓host,(⊂ss.orig),chrid,numid,tgt,ss.homeport,⍪port
           ids←{dix'host orig chrid numid tgt home port'⍵}¨data
-          z←20 connect¨↓chrid,host,port,⍪↓receive,⍪↓source,ss.listen,⍪ids
+          z←connect¨↓chrid,host,port,⍪↓receive,⍪↓source,ss.listen,⍪ids
           shape⍴ids
 ⍝ Create DRC client for each isolate.
 ⍝ Create id spaces to send and return for corresponding proxies.
@@ -633,244 +625,12 @@
       }
 
       newSession←{⍺←⊢
-          0=⎕NC'session.started':1
+          0∊⎕NC'session.started':1
           0.0001<|session.started-sessionStart''
 ⍝ The session is new if session.started is missing.
 ⍝ It needs to be restarted if session.started differs from the actual
 ⍝ start of the session by more than 8.64 seconds (1/10000 of a day)
 ⍝ that indicates that the ws was saved with the session space intact
-      }
-
-      notes←{⍺←⊢
-          {(,⍵)/⍨,⌽∨\⌽⍵≠' '}(⎕UCS 13),'⍝ '{(0,⍴,⍺)↓⍵⌿⍨>/⍺⍷⍵}⎕CR⊃⎕SI
-⍝ Implementation notes
-⍝
-⍝ All contained in a single ns-tree - #.isolate - but aim to be relocatable as:
-⍝
-⍝       '#.isolate' #.myns.⎕CY 'isolate'
-⍝
-⍝ The isolate proxy returned by New is a container space created by ⎕NS in the caller having had 1∘(700⌶) applied to it.
-⍝ It contains the special functions: "iSyntax" & "iEvaluate", additional function iSend and a number of namespaces.
-⍝
-⍝ Data spaces:
-⍝
-⍝ session - created and populated by Init, it contains all constants & variables except those in:
-⍝ options - created and populated by setDefaults, it contains all user options. Maintained by Config.
-⍝
-⍝ Tables:
-⍝
-⍝ session.procs
-⍝       stores process instances and contact details in four columns:
-⍝           proc-id; proc-inst(0); host-addr; port-no
-⍝ proc-id   integer incremented from zero when a process is started or made available.
-⍝ proc-inst instance of APLProcess if local or 0 placeholder if remote
-⍝ host-addr IP-address of machine where is process
-⍝ port-no   port-number on which process listening; incremented from first available multiple of 7051
-⍝
-⍝ session.assoc
-⍝       associates isolates with particular processes in two columns:
-⍝             isolate-id; proc-id
-⍝ isolate-id  integer incremented from "random" seed; also in iD namespace in proxy and sent to isolate; names remote space as: 'IsoNNNN'
-⍝ proc-id     as session.procs
-⍝
-⍝
-⍝ Functions:
-⍝ --
-⍝ StartServer                                             r←StartServer ⍵
-⍝ Run an isolate server on one machine to be used by one or more others.
-⍝ This must be the first use of the isolate namespace in the session.
-⍝   Output should be similar to:
-⍝ ,------------------------------------------------------------------------,
-⍝ |      isolate.StartServer''                                             |
-⍝ |Server 'ISO7051', listening on port 7051                                |
-⍝ | Handler thread started: 1                                              |
-⍝ | Thread 1 is now handing server 'ISO7051'.                              |
-⍝ |                                                                        |
-⍝ | IP Address:  192.168.0.2                                               |
-⍝ | IP Ports:    7052 7053 7054 7055                                       |
-⍝ |                                                                        |
-⍝ |Enter the following in another session, in one or more another machines:|
-⍝ |                                                                        |
-⍝ |      #.isolate.AddServer '192.168.0.2' (7052-⎕IO-⍳4)                   |
-⍝ '------------------------------------------------------------------------'
-⍝
-⍝ AddServer                                                r← AddServer ⍵
-⍝ use isolate server started in another machine
-⍝ ⍵         address ports
-⍝ address   ip-address of host where isolates will reside.
-⍝ ports     ports listening for isolate creation and execution.
-⍝   The argument will be given as output from the session in the server machine when started with:
-⍝       isolate.StartServer''
-⍝ Multiple servers can be started in different machines and used by one or vice versa depending on resources available.
-⍝ isolates can be used as usual with New, llEach &c. but expressions will be evaluated in the other machine.
-⍝
-⍝ New                                                      r←New ⍵
-⍝ models isolate primitive: ¤
-⍝ ⍵         source
-⍝ source    code ∧/∨ data to be copied to isolate.
-⍝           ref or namelist expected to be qualified relative to caller.
-⍝ caller    space from which this fn was called.
-⍝           when this is primitive both source & caller will be a matter of course.
-⍝ ←         proxy
-⍝ proxy     visible component of isolate.
-⍝           anonymous space child of caller.
-⍝           contains copies of iSyntax & iEvaluate, and refs - iSource to source, iCaller to the caller, iSpace to this space, iCarus - an instance of the "suicide" class and iD - containing the isolate id, the DRC client id, the port and the remote process id.
-⍝
-⍝ Config                                                r← Config ⍵
-⍝ query or set configuration options.
-⍝ ⍵         '' | name | name value
-⍝ name      one of params defined in setDefaults
-⍝ value     new value for param
-⍝ ←         ⍵:''            : table of all names and values
-⍝           ⍵:name          : value
-⍝           ⍵:name value    : old value having set new in param
-⍝ Config should normally be run before any isolate processes are created to ensure non-default values are honoured.
-⍝ Once any isolates have been created all but "debug" have been used and will e ignored.
-⍝ e.g.
-⍝ ,----------------------,
-⍝ |      isolate.Config''|
-⍝ | debug             0  |
-⍝ | drc               #  |
-⍝ | listen            0  |
-⍝ | processes         1  |
-⍝ | processors        4  |
-⍝ | runtime           0  |
-⍝ | status       client  |
-⍝ | workspace   isolate  |
-⍝ '----------------------'
-     
-⍝ --
-⍝ Operators:
-⍝ The results of these operators should be equivalent to that modelled except insofar as asynchronous execution makes the order of creation of side-effects unpredictable.
-⍝ --
-⍝ ll                                                    r←⍺ (⍺⍺ ll) ⍵
-⍝ parallel - models ⍺ ⍺⍺ || ⍵
-⍝ ⍺     optional left argument to ⍺⍺
-⍝ ⍺⍺    function to run in an ephemeral isolate.
-⍝ ⍵     right arg to ⍺⍺
-⍝ ←     future - result of ⍺⍺ executed in isolate.
-⍝
-⍝ llEach                                                r←⍺ (⍺⍺ llEach) ⍵
-⍝ parallel each - models ⍺ ⍺⍺ || ¨ ⍵
-⍝ ⍺     optional array itemwise compatible with ⍵; it's items are in the left domain of ⍺⍺.
-⍝ ⍺⍺    function presumed to be ambivalent or dyadic if ⍺ is supplied or monadic if not.
-⍝ ⍵     array whose items are in the right domain of ⍺⍺.
-⍝ ←     array of futures with shape ←→ ⍴⍺⊢¨⍵ or ⍴⍵
-⍝
-⍝ llOuter                                              r←⍺ (⍺⍺ llOuter) ⍵
-⍝ parallel outer product - models ⍺ ∘.(⍺⍺ ||) ⍵
-⍝ ⍺     array whose items are in the left domain of ⍺⍺.
-⍝ ⍺⍺    dyadic function applied between all possible pairs of items of ⍺ and ⍵
-⍝ ⍵     array whose items are in the right domain of ⍺⍺.
-⍝ ←     array of futures with shape ←→ (⍴⍺),⍴⍵
-⍝
-⍝ llKey                                               r←⍺ (⍺⍺ llKey) ⍵
-⍝ parallel key - models ⍺ (⊂ ⍺⍺) || key ⍵
-⍝ ⍺     optional array ; if present:  ≢⍺ ←→ ≢⍵ ; else:  ⍺⍺ llKey ⍵ ←→ ⍵ ⍺⍺ llKey ⍳≢⍵
-⍝ ⍺⍺    ambivalent function applied between each unique major cell of a and the corresponding subarray of ⍵
-⍝ ⍵     array
-⍝ ←     array of futures with shape as the number of unique keys each item being a single result of ⍺⍺.
-⍝ To emulate primitive key completely it should mix (↑) the results. This is not done here as it would dereference the futures.
-⍝
-⍝ llRank                                             r←⍺ (⍺⍺ llRank ⍵⍵) ⍵
-⍝ parallel rank - models ⍺ (⊂ ⍺⍺) || rank ⍵⍵ ⊢ ⍵
-⍝ ⍺     optional array framewise compatible with ⍵; it's cells as defined by ⍵⍵ are in the left domain of ⍺⍺.
-⍝ ⍺⍺    function presumed to be ambivalent or dyadic if ⍺ is supplied or monadic if not.
-⍝ ⍵⍵    integer scalar or 1, 2 or 3 item vector defining the ranks of the cells to or between which function ⍺⍺ will be applied.
-⍝ ⍵     array whose cells as defined by ⍵⍵ are in the right domain of ⍺⍺
-⍝ ←     array of futures with shape determined by combination of ⍵⍵ and the shapes of ⍺ amd/or ⍵
-⍝ ⍺⍺ is applied between corresponding cells of ⍺ and ⍵ or to the cells of ⍵.
-⍝ To emulate primitive rank completely it should mix (↑) the results. This is not done here as it would dereference the futures.
-⍝ -----------------------------------------------------------------
-⍝ Internals
-⍝
-⍝ iSyntax - copied to proxy
-⍝ return name class and syntax code of supplied name
-⍝
-⍝ ⍵         simple name, word or "()" or "{}" delimited expression, adjascent to the dot in iso.whatever
-⍝ ←         class, syntax
-⍝ class, syntax of name in isolate.
-⍝           3 nilad if '(...)'
-⍝           3 ambiv if '{...}'
-⍝           2       if 2={x←⍎⍵ ⋄ ⎕nc'x'}'⎕...'
-⍝           3 ambiv if 2={x←⍎⍵ ⋄ ⎕nc'x'}'⎕...'
-⍝           3 ambiv if ∊',⊢-⊂⍴⊃≡+!=⍳⊣↓↑|⍪⍕⍎∊⌽~×≠>⌊∨?⌷<≢⌈≥⍷⍉∪÷⍒⊥∧⍋⊖*○⍲⍱⍟⌹⊤≤∩'
-⍝           0 error if 0>⎕nc'...'
-⍝           otherwise send to isolate to ask for ⎕NC and ⎕AT
-⍝
-⍝ --------------------------------------------------------------------------
-⍝ iEvaluate - copied to proxy
-⍝ execute expression supplied to isolate
-⍝
-⍝ ⍺    | ⍵ - n is the syntax code supplied by "syntax"
-⍝      |
-⍝      | 2 n arrayname
-⍝      | 2 n arrayname newvalue
-⍝      | 2 n arrayname (PropertyArguments : Indexers IndexersSpecified)
-⍝      | 2 n arrayname (PropertyArguments : Indexers IndexersSpecified NewValue)
-⍝      | 3 n niladname
-⍝      | 3 n (expression)
-⍝      | 3 n {monad} rarg
-⍝ larg | 3 n {dyad} rarg
-⍝      | 3 n monadname rarg
-⍝ larg | 3 n dyadname rarg
-⍝
-⍝ RPCServer only permits a monadic fname and rarg to an existing function in the remote ws so we give it 'execute' with nested vector rarg as:
-⍝ a | b      | c       | d    | e
-⍝ 0 | array  |         |      |
-⍝ 0 | nilad  |         |      |
-⍝ 0 | (expr) |         |      |
-⍝ 1 | monad  | rarg    |      |
-⍝ 2 | larg   | dyad    | rarg |
-⍝ 3 | array  | value   |      |
-⍝ 4 | array  | indices | axes |
-⍝ 5 | array  | indices | axes | value
-⍝
-⍝ If the expression causes an error that is trapped in the remote
-⍝ process it is passed back as ⎕EN ⎕DM that is signalled .
-⍝ --------------------------------
-⍝ Configuration options
-⍝ (from the setDefaults private function:
-⍝ ,------------------------------------------------------------------------------,
-⍝ |   options.debug←0                           ⍝ cut back on error              |
-⍝ |   options.drc←#                             ⍝ copy into # if # and missing   |
-⍝ |   options.workspace←'isolate'               ⍝ load current ws for remotes?   |
-⍝ |   options.listen←0                          ⍝ can isolate call back to ws    |
-⍝ |   options.processors←processors 4           ⍝ no. processors                 |
-⍝ |   options.processes←1                       ⍝ per processor                  |
-⍝ |   options.runtime←'R'∊3⊃'.'⎕WG'APLVersion'  ⍝ use runtime version unless devt|
-⍝ |   options.status←'client'                   ⍝ set as 'server' by StartServer |
-⍝ '------------------------------------------------------------------------------'
-⍝ debug:
-⍝ All public fns and ops set an error guard as:
-⍝      trapErr''::signal''
-⍝ If options.debug is 0 (the default) then trapErr'' returns 0 so all errors are trapped and signalled back to the session.
-⍝ If 1 then trapErr'' is ⍬, there is no trap and errors are signalled at the point of error.
-⍝
-⍝ drc:
-⍝ If drc is # (the default) we check to see if #.DRC exists and copy if not. Otherwise drc must be a ref to the extant DRC namespace.
-⍝
-⍝ workspace:
-⍝ This is the workspace to be ⎕LOADed by APLProcess (default "isolate") that must contain the isolate namespace and call 'isolate.ynys.isoStart ⍬' in its ⎕LX. It should be in one of the folders defined in [Options]-[Configure...]-[Workspace] in the session menubar or be specified with a full path.
-⍝
-⍝ listen:
-⍝ Whether the isolates will be enabled to call back to the active ws to request further data &c. (default 0.)
-⍝ When enabled an "instance" of RPCServer is created locally to receive requests from the isolates.
-⍝ Such requests are issued to the "parent" of the remote isolate accessed as ##. which is enabled as an isolate in its own right.
-⍝
-⍝ processors:
-⍝ The number of prosessors in the machine. Currently available from Windows but default 4 elsewhere.
-⍝
-⍝ processes:
-⍝ The number of processes that will be started per prosessor in the machine. (default 1.)
-⍝
-⍝ runtime:
-⍝ Whether the runtime equivalent of the active interpreter should be started for the slave processes. If the active interpreter (the default) is runtime then runtime anyway.
-⍝
-⍝ status:
-⍝ Set by StartServer and AddServer.
-⍝
-⍝
       }
 
       processors←{⍺←⊢
@@ -906,6 +666,23 @@
 ⍝       last two cols missing
       }
 
+      publicMethods←{⍺←⊢
+          messages'⍝- '
+⍝- AddServer
+⍝- Config
+⍝- InternalState
+⍝- LastError
+⍝- New
+⍝- StartServer
+⍝- ll
+⍝- llEach
+⍝- llKey
+⍝- llOuter
+⍝- llRank
+     
+⍝ add more after prefix '⍝- '
+      }
+
       receive←{⍺←⊢
           (source listen id)←⍵                           ⍝ this all happens remotely
           name←id.chrid
@@ -923,6 +700,29 @@
           z←#.DRC.Clt⍣listen⊢id.(chrid orig port)        ⍝ orig=host if local
           1⊣1(700⌶)root                                  ⍝ DOMAIN ERROR if no iSyntax
       }
+      
+    ∇ r←Reset mode;iso;clt;ok
+      :If 2=⎕NC'session.assoc.iso'
+          r←(⍕≢session.assoc.iso),' isolates, '
+          :For iso :In session.assoc.iso ⍝ For each known isolate
+              {}DRC.Close'Iso',⍕iso
+          :EndFor
+     
+          r,←(⍕≢session.procs),' processes reset'
+          :For clt :In session.procs[;4] ⍝ For each process
+              {}DRC.Close clt
+          :EndFor
+     
+          count←0
+          :While ~ok←∧/session.procs[;1].HasExited
+              ⎕DL retry_interval×count←count+1
+          :Until count>retry_limit
+          r←r,(~ok)/' (service processes have not die)'
+      :Else
+          r←'no session established'
+      :EndIf
+      ⎕EX'session'
+    ∇
 
       sessionStart←{⍺←⊢
           24 60 60 1000{(dateNo ⍵)-(⍺-⍺⍺⊥3↓⍵)÷×/⍺⍺}/(2⊃⎕AI)⎕TS
@@ -934,43 +734,30 @@
 
       setDefaults←{⍺←⊢
           here←⎕THIS
-          new←0=here.⎕NC⊂'options'             ⍝ set defaults only once
-          z←{here.options←⎕NS''
-              options.debug←0                  ⍝ cut back on error
-              options.drc←#                    ⍝ copy into # if # and missing
-              options.workspace←getDefaultWS'isolate' ⍝ load current ws for remotes?
-              options.listen←0                 ⍝ can isolate call back to ws
-              options.processors←processors ⍬  ⍝ no. processors (fn ignores ⍵)
-              options.processes←1              ⍝ per processor
-              options.runtime←0                ⍝ use runtime version
-              options.status←'client'          ⍝ set as 'server' by StartServer
+          new←0=here.⎕NC⊂'options'                      ⍝ set defaults only once
+          z←{
+              spaces←here.(types options domains)←here.⎕NS¨⍬ ⍬ ⍬
+              tod←{(2⍴⍵),⊂1↓⍵}                          ⍝ type: Str Bool Int Ref
+⍝ ensure all param names are minuscule as arg to Config is converted thus.
+⍝        spaces.param← tod 'S' 'Default' 'and' 'the' 'Rest'
+              spaces.debug←tod'B' 1                     ⍝ cut back on error
+              ⎕←'/// NB debug set to 1'
+              spaces.drc←tod'R'#                        ⍝ copy into # if # and missing
+              spaces.listen←tod'B' 1                    ⍝ can isolate call back to ws
+              ⎕←'/// NB listen set to 1'
+              spaces.onerror←tod'S' 'signal' 'debug' 'return'
+              spaces.processes←tod'I' 1                 ⍝ per processor
+              spaces.processors←tod'I'(processors ⍬)    ⍝ no. processors (fn ignores ⍵)
+              spaces.runtime←tod'B' 1                   ⍝ use runtime version
+              spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
+              spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
           }⍣new⊢0
           0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
-          ⊢options getset ⍵
+          ⊢getSet ⍵                                     ⍝ this where Config called prior Init
 ⍝ called by Config before Init runs and by Init when it does.
 ⍝ set default options and permit user changes
 ⍝ but leave Init to apply them.
-      }
-
-      setOption←{⍺←⊢
-     
-          ⍺≡'debug':{        ⍝ set trap function on or off
-              ⎕THIS.(trapErr←(⍵↓0)∘⊣)
-              ⍵
-          }⍵
-     
-⍝     ⍺≡'workspace':{                 ⍝ ensure quoted if needs
-⍝         (⊢/≥∨/)', "'∊⍵:⍵            ⍝ quoted or no commas or spaces
-⍝         options getset ⍺('"',⍵,'"') ⍝ quote
-⍝     }⍵
-     
-          ⍵
-     
-⍝ any options requiring immediate action.
-⍝ by the time this runs the var in options named as ⍺
-⍝   has ready been set to ⍵ in Config
-⍝   so this only covers the special cases.
       }
 
       until←{⍺←⊢ ⋄ f←⍺⍺ ⋄ t←⍵⍵
@@ -1012,12 +799,6 @@
 ⍝- inet addr
       }
 
-      win←{⍺←⊢
-          'W'=2⊃#.⎕WG'APLVersion'
-          'Windows'{⍺≡(⍴⍺)↑⍵}⊃⍬⍴#.⎕WG'APLVersion'
-⍝
-      }
-
       ynys←{⍺←⊢
 ⍝ ynys - Welsh - island - cognate with insular, isolate &c.
 ⍝ and beginning with "y" it's at the bottom of autocomplete
@@ -1031,62 +812,53 @@
    
           iEvaluate←{⍺←⊢
               data←⍺ iSpace.encode ⍵
-              home←2∊⎕NC'iSpace.session.started'
-              z←{
-                  ⊢iSpace.session.assoc.(busy∨←iso=⍵)  ⍝ thread safe global assign on
-              }⍣home⊢iD.numid
-              0::(⊃⎕DM)⎕SIGNAL ⎕EN                   ⍝ signal here leaves busy on
-              res←iSend iD.tgt data                    ⍝ the biz
-              z←{
-                  ⊢iSpace.session.assoc.(busy∧←iso≠⍵)  ⍝ thread safe global assign off
-              }⍣home⊢iD.numid
-              1:res
+              ID←iD.numid
+              ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
+              z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
+   ⍝     0::(⊃⎕DM)⎕SIGNAL ⎕EN            ⍝ signal here leaves busy on
+              (rc res)←iSend iD.tgt data       ⍝ the biz
+              ok←0=rc
+              ~home:res                        ⍝ call back? then we're done
+   ⍝ I /think/ we might need ⎕SIGNAL on error from ## (~home)
+              z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
+              ok:⊢res                          ⍝ spiffing!
+   ⍝ record error and clock out
+   ⍝ we have rc and res and presume that res is a ⎕DM
+              (pre msg)←'Isolate: ' 'Call back to session not enabled'
+   ⍝ if expression of ⎕DM contains '##' replace error-name with above.
+              (⊃res)←pre,⊃{(1∊'##'⍷⍵)⊃⍺ msg}/2↑res
+   ⍝ if 'f[] f' then drop 'f[] '
+   ⍝  ...    (1⊃res)←{('f[] f'⍷⍵)↓⍵}↓1⊃res
+              ss.errors{(⍺↓⍨63<≢⍺),⍵}←⊂(ss.assoc.group ID)rc res
+              1:                               ⍝ VALUE ERROR: Future has no value
    ⍝ execute expression supplied to isolate
-   ⍝ see notes
           }
    
           iSend←{data←⍵
-              send←((⍕iSpace),'.execute')data              ⍝ RPCServer runs this
+              send←((⍕iSpace),'.execute')data      ⍝ RPCServer runs this
+              ⎕TRAP←0 'C' '→1+⎕lc ⊣ res← ⎕EN, ⎕DM'
               res←iSpace.DRC.Send iD.chrid send
-              0≠0⊃res:(⍕res)⎕SIGNAL 11
+              rc nm ev data←4↑res                  ⍝ dest for trap on DRC.Send
+              0≠rc:⊢rc((⍕rc nm)ev)                 ⍝ ret ⎕EN ⎕DM
               wait←{
-                  (r n e d)←res←4↑iSpace.DRC.Wait 1⊃⍵
-                  r=100:⊢⍵⊣⎕DL 0.1
-                  r≠0:(⍕res)⎕SIGNAL 11
-                  e≡'Progress':⊢⍵
-                  e≡'Receive':⊢1 d
-                  .uh?
+                  res←(rc nm ev data)←4↑iSpace.DRC.Wait 1⊃⍵
+                  rc=100:∇ ⍵⊣⎕DL 0.1
+                  rc≠0:⊢res
+                  ev≡'Progress':∇ ⍵
+                  ev≡'Receive':res
+            ⍝ any more?
               }
-              (en res)←1⊃wait⍣(⊃⊣)2⍴res
-              ko←~ok←en=0
-              home←2∊⎕NC'iSpace.session.started'
-              ~home:⊢{(⊃⍬⍴⍵)⎕SIGNAL en}⍣ko⊢res             ⍝ do I want to signal remotely
+   ⍝ non-zero apart from 100 from DRC.Wait above
+   ⍝  will blow ↓ this with DOMAIN ERROR
+              res←wait 2⍴res
+              (rc nm ev res)←res                                ⍝ dest for trap on DRC.Wait
+   ⍝ if rc is 0 res which will be (0 result)
+              rc=0:⊢res
+   ⍝ else return rc and faked ⎕DM
+              rc((⍕rc nm)ev)
          
-              assoc←iSpace.session.assoc
-              last←1≥+/assoc.busy                          ⍝ last man standing
-         
-              ok>last:⊢res                                 ⍝ ok!!!
-         
-              ok:{                                         ⍝ last and ok
-                  ok←0∊⍴⊃(en dm)←assoc.((err≠0)∘/¨err msg) ⍝ no stacked errors
-                  ok:⊢res
-         
-                  assoc.((1/err)←(1/msg)←(1/busy)←0)       ⍝ clear record
-                  (⊃dm)⎕SIGNAL⊃en                          ⍝ signal first stacked error
-              }res
-                                                     ⍝ error trapped via RPCServer
-              (pre msg)←'Isolate: ' 'Call back to session not enabled'
-         
-              dm←pre,⊃{(1∊'##'⍷⍵)⊃⍺ msg}/2↑res
-         
-              last:dm ⎕SIGNAL en
-   ⍝ we're not the last so we stack error and return anything to avoid a value error
-              assoc.(err msg)←iD.numid assoc.{t⊣((iso⍳⍺)⊃¨t)←⍵⊣t←err msg}en dm
-              1:0
-         
-         
-   ⍝ called from both iEvaluate and iSyntax and also from
-   ⍝ ##.cleanup to get rid of isolate from remote process
+   ⍝ called from iSyntax, iEvaluate and from
+   ⍝ ##.cleanup to remove isolate from remote process
           }
    
           iSyntax←{⍺←⊢
@@ -1100,7 +872,8 @@
               c∊f:⊢3 52
               0>⎕NC ⍵:⊢0 0                           ⍝ primitive operators
               expr←'((2⍴⎕nc∘⊂,⎕at),''',⍵,''')'       ⍝ then what is it?
-              (nc at)←iSend iD.tgt(0 expr)           ⍝ from the horse's mouth
+              (rc res)←iSend iD.tgt(0 expr)          ⍝ from the horse's mouth
+              (nc at)←res                            ⍝ ⎕NC ⎕AT - rc?
               nc∊3.2 3.3:⊢3 52                       ⍝ 3,32+16+4 res ambi omega
               c←⌊nc                                  ⍝ class
               c∊0 2:⊢2 0                             ⍝ undef, var
@@ -1109,7 +882,6 @@
               r←c,2⊥r a d w 0 0                      ⍝ class, encoded syntax
               1:⊢r
    ⍝ return nameclass and syntax for supplied name (string)
-   ⍝ see notes
           }
    
     :endnamespace ⍝ proxySpace

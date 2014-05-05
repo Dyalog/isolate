@@ -8,6 +8,7 @@
     :field Public Ws←''
     :field Public Exe←''
     :Field Public Proc←⎕NS ''
+    :Field Public onExit←''
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -25,7 +26,6 @@
       (ws cmd rt)←args
       Start(ws cmd rt)
     ∇
-
 
     ∇ Start(ws args rt);psi;pid
       (Ws Args)←ws args
@@ -49,8 +49,22 @@
       :EndIf
     ∇
 
-    ∇ Close
+    ∇ Close;count;limit
       :Implements Destructor
+      WaitForKill&200 0.1 ⍝ Start a new thread to do the dirty work
+    ∇
+
+    ∇ WaitForKill(limit interval);count
+      :If (0≠⍴onExit)∧~HasExited ⍝ If the process is still alive
+          :Trap 0 ⋄ ⍎onExit :EndTrap ⍝ Try this
+     
+          count←0
+          :While ~HasExited
+              {}⎕DL interval
+              count←count+1
+          :Until count>limit
+      :EndIf ⍝ OK, have it your own way
+     
       {}Kill Proc
     ∇
 

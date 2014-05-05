@@ -1,5 +1,5 @@
 ﻿:Namespace RPCServer
-    (⎕IO ⎕ML)←1 0
+    (⎕IO ⎕ML)←1 1
 
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
@@ -14,7 +14,7 @@
       r←⎕NEW #.APLProcess(ws params)
     ∇
 
-    ∇ Boot;name;port;certfile;keyfile;sslflags;num;getenv;secure;load;l;folder
+    ∇ Boot;name;port;certfile;keyfile;sslflags;num;getenv;secure;load;l;folder;z;autoshut;quiet
     ⍝ Bootstrap an RPC-Server using the following command line parameters
     ⍝ -Port=nnnn
     ⍝ -Load=.dyalog files to load before start
@@ -33,6 +33,8 @@
      
       name←'RPCSRV'
       port←num getenv'Port'
+      autoshut←num getenv'AutoShut' ⍝ Shut down if 1st connection is lost
+      quiet←num getenv'Quiet'       ⍝ Suppress diagnostic session output
      
       :If 0≠⍴load←getenv'Load'
           load←{1↓¨(','=⍵)⊂⍵}',',load
@@ -44,9 +46,9 @@
       :If secure←0≠⍴certfile←getenv'CertFile'
           keyfile←getenv'KeyFile'
           sslflags←num getenv'SSLFlags'
-          z←1 Run name port('CertFile'certfile)('KeyFile'keyfile)('SSLFlags'sslflags)
+          z←1 quiet autoshut Run name port('CertFile'certfile)('KeyFile'keyfile)('SSLFlags'sslflags)
       :Else
-          z←1 Run name port
+          z←1 quiet autoshut Run name port
       :EndIf
      
       :If 0≠1⊃z ⋄ ⎕←z ⋄ ⎕DL 10 ⋄ :EndIf ⍝ /// Pop up? Log?
@@ -74,7 +76,7 @@
       {}##.DRC.Respond obj r
     ∇
 
-    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg
+    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut
       ⍝ Run a Simple RPC Server
      
       (name port)←2↑args
@@ -82,12 +84,12 @@
      
       :If 0=⎕NC'start' ⋄ start←1 ⋄ :EndIf         ⍝ start may be (start quiet)
       rt←'R'∊'.'⎕WG'APLVersion'                   ⍝ Runtime or DLLRT           ⍝ PL
-      (start quiet)←0 rt∨2↑start                                               ⍝ PL
+      (start quiet autoshut)←0 rt 0∨3↑start                                               ⍝ PL
       {}##.DRC.Init''
      
       :If start
           :If 0≠1⊃r←##.DRC.Srv(name''port'Command'),srvparams ⋄ :Return ⋄ :EndIf ⍝ Exit if unable to start server
-          :If ~rt ⋄ tid←0 quiet Run&name port                                      ⍝ PL
+          :If ~rt ⋄ tid←0 quiet autoshut Run&name port                                      ⍝ PL
           ⍝ Above line may start handler on separate thread
               ⍪quiet↓⊂'Server ''',name,''', listening on port ',⍕port              ⍝ PL
               ⍪quiet↓⊂' Handler thread started: ',⍕tid                             ⍝ PL
@@ -113,6 +115,11 @@
                           {}##.DRC.Close obj ⍝ Close connection in error
                       :EndIf
      
+                      :If autoshut=1
+                      :AndIf 0=≢2 2⊃#.DRC.Tree name
+                          ⎕←'Last connection lost - AutoShut initiated' ⋄ done←1
+                      :EndIf
+     
                   :Case 'Receive'
                       :If 2≠⍴data ⍝ Command is expected to be (function name)(argument)
                           {}##.DRC.Respond obj(99999 'Bad command format') ⋄ :Leave
@@ -124,7 +131,8 @@
      
                       Process&obj data ⍝ Handle each call in new thread
      
-                  :Case 'Connect' ⍝ Ignored
+                  :Case 'Connect' ⍝ Set 'KeepAlive' to 10 seconds so we discover IP disconnections
+                      {}##.DRC.SetProp obj'KeepAlive' 10000 10000
      
                   :Else ⍝ Unexpected result? should NEVER happen
                       ⎕←'Unexpected result "',event,'" from object "',name,'" - RPC Server shutting down' ⋄ done←1
@@ -147,8 +155,6 @@
       ⎕DL 1 ⍝ Give responses time to complete
       {}##.DRC.Close name
       ⎕←'Server ',name,' terminated.'
-     
-     
     ∇
 
 :EndNamespace
