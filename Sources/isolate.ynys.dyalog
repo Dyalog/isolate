@@ -67,8 +67,9 @@
           z←DRC.Init ⍬
           here.(signal←⎕SIGNAL/∘{(0⊃⎕DM)⎕EN})
           ss.orig←whoami''
-          listen←(ss.homeport←7051)∘localServer   ⍝ ⌽⊖'ISOL'
-          ss.listen←10 listen until⊢⍣op.listen⊢0  ⍝ "calls back"?
+          ss.homeport←7051
+          ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
+ ⍝         ss.listen←10 listen until⊢⍣op.listen⊢0  ⍝ "calls back"?
           ss.errors←,⊂0 0('' '')                  ⍝ ⎕EN ⎕DM for latest group
           ss.nextid←2⊃⎕AI                         ⍝ isolate id
           z←⎕TPUT ss.callback←1+(2*15)|+/⎕AI      ⍝ queue for calls back
@@ -432,11 +433,11 @@
           ok←ok∧((1=⍴)∨(⊂new)∊⊢)range
           ~ok:sig11⍕nam,' should be one of:',range
      
-          (ws db)←'workspace' 'debug'∊⊂nam          ⍝ special
-          0::(⊃⎕DM)⎕SIGNAL ⎕EN                      ⍝
-          z←checkWs⍣ws⊢new                          ⍝
-          z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new    ⍝ cases
-     
+          (ws db li)←'workspace' 'debug' 'listen'∊⊂nam ⍝ special
+          0::(⊃⎕DM)⎕SIGNAL ⎕EN                         ⍝
+          z←checkWs⍣ws⊢new                             ⍝
+          z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new       ⍝
+          localServer⍣li⊢new                           ⍝ cases
           old⊣nam options.{⍎⍺,'←⍵'}new
      
 ⍝    }⍵
@@ -608,11 +609,31 @@
 ⍝ Phil Last ⍝ 2007-06-22 22:57
       }
 
-      localServer←{⍺←⊢
-          0=rc←⊃1 1 ##.RPCServer.Run'ISO'{(⍺,⍕⍵)⍵}session.homeport:1
-          10048=rc:⊢0⊣session.homeport+←⍺
-⍝ 10048 WinSock Error attempt to use listening socket already in use.
-      }
+    ∇ r←localServer r;srv;rc;z
+      :If r=0
+      :AndIf r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
+          {}DRC.Close srv ⍝ Left over - object there but no thread
+          ⎕TKILL session.listeningtid
+          ⎕EX'session.listeningtid'
+      :Else
+     
+          :If r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
+              :If r←2=⎕NC'session.listeningtid'
+              :AndIf r←session.listeningtid∊⎕TNUMS
+              :Else
+                  {}DRC.Close srv ⍝ Left over - object there but no thread
+              :EndIf
+          :EndIf
+     
+          :If ~r ⍝ Already got a listening server
+              :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
+                  session.listeningtid←1⊃z
+              :ElseIf 10048=rc ⍝ Socket already in use
+                  ('Unable to create listener on port ',⍕session.homeport)⎕SIGNAL 11
+              :EndIf
+          :EndIf
+      :EndIf
+    ∇
 
       messages←{⍺←⊢
           {(+/∨\' '≠⌽⍵)↑¨↓⍵}⍵{(0,⍴,⍺)↓⍵⌿⍨>/⍺⍷⍵}⎕CR⊃1↓⎕XSI
@@ -717,9 +738,13 @@
           :While ~ok←∧/session.procs[;1].HasExited
               ⎕DL retry_interval×count←count+1
           :Until count>retry_limit
-          r←r,(~ok)/' (service processes have not die)'
+          r←r,(~ok)/' (service processes have not died)'
+     
+          :If 2=⎕NC'session.listeningtid'
+              ⎕TKILL session.listeningtid
+          :EndIf
       :Else
-          r←'no session established'
+          r←'nothing to reset'
       :EndIf
       ⎕EX'session'
     ∇

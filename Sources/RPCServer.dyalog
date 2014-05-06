@@ -76,7 +76,7 @@
       {}##.DRC.Respond obj r
     ∇
 
-    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut
+    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid
       ⍝ Run a Simple RPC Server
      
       (name port)←2↑args
@@ -89,11 +89,14 @@
      
       :If start
           :If 0≠1⊃r←##.DRC.Srv(name''port'Command'),srvparams ⋄ :Return ⋄ :EndIf ⍝ Exit if unable to start server
-          :If ~rt ⋄ tid←0 quiet autoshut Run&name port                                      ⍝ PL
+          :If ~rt ⋄ tid←0 quiet autoshut Run&name port
           ⍝ Above line may start handler on separate thread
-              ⍪quiet↓⊂'Server ''',name,''', listening on port ',⍕port              ⍝ PL
-              ⍪quiet↓⊂' Handler thread started: ',⍕tid                             ⍝ PL
-              :Return
+          ⍝ /// Looks like a bug to Morten if your application is in a runtime
+          ⍝ /// That should probably only be done if BOOTING in a runtime
+              ⍪quiet↓⊂'Server ''',name,''', listening on port ',⍕port
+              ⍪quiet↓⊂' Handler thread started: ',⍕tid
+              r←0 tid
+              :Return ⍝ New TID
           :EndIf
       :EndIf
      
@@ -110,7 +113,7 @@
               :Case 0
                   :Select event
                   :Case 'Error'
-                      ⎕←'Error ',(⍕data),' on ',obj
+                      ⍪quiet↓⊂'Error ',(⍕data),' on ',obj
                       :If ~done∨←name≡obj ⍝ Error on the listener itself?
                           {}##.DRC.Close obj ⍝ Close connection in error
                       :EndIf
@@ -142,7 +145,7 @@
               :Case 100  ⍝ Time out - Insert code for housekeeping tasks here
      
               :Case 1010 ⍝ Object Not Found
-                  ⎕←'Object ''',name,''' has been closed - RPC Server shutting down' ⋄ done←1
+                  ⎕←'Server object ''',name,''' has been closed - RPC Server shutting down' ⋄ done←1
      
               :Else
                   ⎕←'Error in RPC.Wait: ',⍕wait
