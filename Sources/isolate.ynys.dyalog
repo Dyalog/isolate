@@ -41,7 +41,7 @@
 
       Config←{⍺←⊢
           newSession'':{              ⍝ else Init has already run
-              0::(⊃⎕DM)⎕SIGNAL ⎕EN
+              0::(⊃⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
               setDefaults ⍵
           }⍵
           trapErr''::signal''
@@ -70,7 +70,7 @@
           trapErr''::signal''
           ##.DRC←here.DRC←getDRC op.drc
           z←DRC.Init ⍬
-          here.(signal←⎕SIGNAL/∘{(0⊃⎕DM)⎕EN})
+          here.(signal←⎕SIGNAL/∘{(0⊃⎕DMX.DM)⎕DMX.EN})
           ss.orig←whoami''
           ss.homeport←7051
           ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
@@ -196,7 +196,7 @@
       checkWs←{⍺←⊢
                                    ⍝ ⍵ IS a string
           z←⎕NS''
-          0::'WS NOT FOUND'⎕SIGNAL ⎕EN  ⍝ any error bar Value
+          0::'WS NOT FOUND'⎕SIGNAL ⎕DMX.EN  ⍝ any error bar Value
           6::⍵                          ⍝ value error implies copy ok
           z←{}'⎕IO'z.⎕CY ⍵              ⍝ force value error → return ⍵
 ⍝
@@ -210,7 +210,7 @@
       ⎕TRAP←0 'S'
       :If 'f[] f←'≡6↑line ⋄ (line caret)←6↓¨line caret
       :ElseIf 'decode['≡7↑line
-          :If ∨/':Case'⍷line ⋄ ∘
+          :If ∨/':Case'⍷line ⋄ line←caret←''
           :Else ⋄ (line caret)←(1+line⍳']')↓¨line caret
           :EndIf
       :EndIf
@@ -270,7 +270,7 @@
               :EndIf
           :EndSelect
       :Else
-          res←⎕EN ⎕DM
+          res←⎕DMX.(EN DM)
           ⍝ ⎕TRAP←0 'S' ⋄ ∘
       :EndTrap
      
@@ -378,7 +378,7 @@
           (tgt tnm)←⍺⊣#             ⍝ dflt target  - #
           tnm←snm∘⊣⍣(tgt≡tnm)⊢tnm   ⍝ dflt tnames  - snames
           ss←⍕src
-          trap←'⋄0::(⊃⍬⍴⎕dm)⎕signal⎕en⋄'
+          trap←'⋄0::(⊃⍬⍴⎕DMX.EN) ⎕SIGNAL ⎕DMX.⎕EN⋄'
           fix←{op←4=src.⎕NC ⍵
               (aa ww)←2↑(0 2⊃src.⎕AT ⍵)⍴'⍺⍺' '⍵⍵'
 ⍝         tgt.⎕FX(⍺,'←{⍺←⊢')trap('⍵≡⍺⍵:',aa,ss,'.',⍵,ww,'⊢⍵')('⍺(',aa,ss,'.',⍵,ww,')⍵')'}'
@@ -474,7 +474,7 @@
           ~ok:sig11⍕nam,' should be one of:',range
      
           (ws db li)←'workspace' 'debug' 'listen'∊⊂nam ⍝ special
-          0::(⊃⎕DM)⎕SIGNAL ⎕EN                         ⍝
+          0::(⊃⎕DMX.DM)⎕SIGNAL ⎕DMX.EN                         ⍝
           z←checkWs⍣ws⊢new                             ⍝
           z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new       ⍝
           z←localServer⍣li⊢new                         ⍝ cases
@@ -522,7 +522,7 @@
                   Text←⎕DM
                   ⎕DQ'Msg'⎕WC'MsgBox'Caption Text'Error'
               }''
-              (⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+              (⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
           }
           ⍝ ⎕TRAP←0 'C' 'f00⍬'
           ⎕TRAP←0 'S' ⍝ /// Debugging
@@ -820,7 +820,7 @@
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
           }⍣new⊢0
-          0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+          0::(⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
           ⊢getSet ⍵                                     ⍝ this where Config called prior Init
 ⍝ called by Config before Init runs and by Init when it does.
 ⍝ set default options and permit user changes
@@ -883,9 +883,7 @@
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
               z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
-   ⍝     0::(⊃⎕DM)⎕SIGNAL ⎕EN            ⍝ signal here leaves busy on
               (rc res)←z←iSend iD.tgt data       ⍝ the biz
-              ⍝z←tracelog'rc' 'res' 'home',⍪rc res home
               ok←0=rc
               ~home:{rc=0:⍵ ⋄ ⍎⎕←'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
@@ -904,7 +902,7 @@
    
           iSend←{data←⍵
               send←((⍕iSpace),'.execute')data      ⍝ RPCServer runs this
-              ⎕TRAP←0 'C' '→1+⎕lc ⊣ res← ⎕EN, ⎕DM'
+              ⎕TRAP←0 'C' '→1+⎕lc ⊣ res← ⎕DMX.(EN DM)'
               res←iSpace.DRC.Send iD.chrid send
               rc nm ev data←4↑res                  ⍝ dest for trap on DRC.Send
               0≠rc:⊢rc((⍕rc nm)ev)                 ⍝ ret ⎕EN ⎕DM
