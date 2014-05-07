@@ -201,6 +201,21 @@
           z←{}'⎕IO'z.⎕CY ⍵              ⍝ force value error → return ⍵
 ⍝
       }
+      
+    ∇ r←cleanDM r;t;msg;line;caret
+      →(0=⊃r)⍴0         ⍝ Not an error
+      →(3≠⍴t←1⊃r)⍴0     ⍝ Not a ⎕DM
+      (msg line caret)←t
+      msg←('⍎'=⊃msg)↓msg
+      ⎕TRAP←0 'S'
+      :If 'f[] f←'≡6↑line ⋄ (line caret)←6↓¨line caret
+      :ElseIf 'decode['≡7↑line
+          :If ∨/':Case'⍷line ⋄ ∘
+          :Else ⋄ (line caret)←(1+line⍳']')↓¨line caret
+          :EndIf
+      :EndIf
+      (1⊃r)←msg line caret
+    ∇
 
       cleanup←{⍺←⊢
           trapErr''::signal''
@@ -256,6 +271,7 @@
           :EndSelect
       :Else
           res←⎕EN ⎕DM
+          ⍝ ⎕TRAP←0 'S' ⋄ ∘
       :EndTrap
      
       tok←{⎕TPUT session.callback}⍣home⊢0  ⍝ next please!
@@ -336,26 +352,21 @@
 
     ∇ r←execute(name data);z;n
       space←#.⍎name
-      tracelog space name
-      :Trap 0
-          r←space decode 5↑data
-      :Else
-          ⎕TRAP←0 'S' ⋄ ∘ ⍝ WTF???!!!
-      :EndTrap
-      tracelog r
+      r←space decode 5↑data
       :If 0=⎕NC'session' ⍝ In the isolate
-          tracelog'in the isolate session'
+          ⍝ tracelog'in the isolate session'
           :Trap 6
-              z←≡r ⍝ Materialize r to provoke VALUE ERROR
+              z←+r ⍝ Block on futures here to provoke (and trap) the VALUE ERROR
           :Else
-              tracelog'got the value error!'
               :If 2=⎕NC n←name,'error'
                   r←⍎n ⋄ ⎕EX n
+                  (1 0⊃r),←' IN CALLBACK'
               :Else
                   r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
               :EndIf
           :EndTrap
       :EndIf
+      r←cleanDM r
 ⍝ this is the function called by RPCServer.Process
 ⍝ ⍵     name data
 ⍝ data  list created by encode below.
@@ -867,19 +878,18 @@
         (⎕IO ⎕ML)←0 1
    
           iEvaluate←{⍺←⊢
-              z←tracelog ⍵
+              ⍝z←tracelog ⍵
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
               z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
    ⍝     0::(⊃⎕DM)⎕SIGNAL ⎕EN            ⍝ signal here leaves busy on
               (rc res)←z←iSend iD.tgt data       ⍝ the biz
-              z←tracelog'rc' 'res' 'home',⍪rc res home
+              ⍝z←tracelog'rc' 'res' 'home',⍪rc res home
               ok←0=rc
-              ~home:{rc=0:⍵ ⋄ ⎕SIGNAL rc}⍵                 ⍝ call back? then we're done
-   ⍝ I /think/ we might need ⎕SIGNAL on error from ## (~home)
+              ~home:{rc=0:⍵ ⋄ ⍎⎕←'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
-              ok:⊢res                          ⍝ spiffing!
+              ok:⊢res                           ⍝ spiffing!
    ⍝ record error and clock out
    ⍝ we have rc and res and presume that res is a ⎕DM
               ⍝(pre msg)←'Isolate: ' 'Call back to session not enabled'
@@ -920,11 +930,11 @@
           }
    
           iSyntax←{⍺←⊢
-              z←tracelog ⍵
+              ⍝z←tracelog ⍵
               c←⊣/⍵
               '('=c:⊢3 32                            ⍝ if '(expr)' ⍝ 1 0 0 0 0 0
               '{'=c:⊢3 52                            ⍝ if '{defn}' ⍝ 1 1 0 1 0 0
-              '#'∊c:⊢0 0                             ⍝ # in anything un-parenthesised is an error
+              '#'∊⍵:⊢0 0                             ⍝ # in anything un-parenthesised is an error
               '⎕'=c:⊢{0::0 0 ⋄ x←⍎⍵ ⋄ c←⎕NC'x' ⋄ (2 3⍳c)⊃(2 0)(3 52)(0 0)}⍵ ⍝ assumes ⎕FNS ambi
                                                ⍝ ↑ reject ops & nss
               f←',⊢-⊂⍴⊃≡+!=⍳⊣↓↑|⍪⍕⍎∊⌽~×≠>⌊∨?⌷<≢⌈≥⍷⍉∪÷⍒⊥∧⍋⊖*○⍲⍱⍟⌹⊤≤∩'
