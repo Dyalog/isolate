@@ -27,7 +27,7 @@
     ∇
  
     ∇ z←Errors
-     ⍝ Take isolates for a little spin
+     ⍝ Test error handling
      
       #.isolate.Config'listen' 0
       #.isolate.Config'onError' 'signal'
@@ -46,7 +46,7 @@
     ∇
 
     ∇ z←Callbacks
-     ⍝ Take isolates for a little spin
+     ⍝ Test ability to perform callbacks
      
       #.isolate.Config'listen' 1
       #.isolate.Reset 0

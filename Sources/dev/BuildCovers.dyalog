@@ -7,6 +7,7 @@
  IÏ←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llEach⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.llEach)⍵}
  o_II←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llOuter⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.llOuter)⍵}
  ø←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.New⊢⍵ ⋄ ⍺(#.isolate.ynys.New)⍵}
+ ⎕FX'r←DMÏ' 'r←#.isolate.ynys.LastError '''''
 
  :With isolate
      AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.AddServer⊢⍵ ⋄ ⍺(#.isolate.ynys.AddServer)⍵}

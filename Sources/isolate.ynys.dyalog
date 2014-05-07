@@ -1,7 +1,11 @@
 ﻿:namespace ynys
 ⍝ ## ←→ #.isolate
 
-    (⎕IO ⎕ML)←0 1
+    (⎕IO ⎕ML)←0 1      
+
+    tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵} 
+    ⍝tracelog←{}        ⍝ uncomment this line to disable logging
+
     retry_limit←20      ⍝ How many retries 
     retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
   
@@ -58,6 +62,7 @@
           ~new:⊢0                                 ⍝ 0 - already started
           here.iSpace←here←⎕THIS
           z←here.(proxyClone←⎕NS'').⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)
+          z←here.proxyClone.⎕FX iSpace.⎕CR'tracelog'
           ss←here.session←⎕NS''
           z←setDefaults''
           op←options
@@ -70,7 +75,7 @@
           ss.homeport←7051
           ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
  ⍝         ss.listen←10 listen until⊢⍣op.listen⊢0  ⍝ "calls back"?
-          ss.errors←,⊂0 0('' '')                  ⍝ ⎕EN ⎕DM for latest group
+          ss.errors←0⍴,⊂0 0('' '')                 ⍝ ⎕EN ⎕DM for latest group
           ss.nextid←2⊃⎕AI                         ⍝ isolate id
           z←⎕TPUT ss.callback←1+(2*15)|+/⎕AI      ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
@@ -102,9 +107,11 @@
       }
 
       LastError←{⍺←⊢
-          newSession'':⍳0 0
+          newSession'':0 2⍴0
+          0∊⍴session.errors:0 2⍴0
           errors←↑¨↑session.errors←{⍺/⍨⍵=⊢/⍵}∘(⊣/↑)⍨session.errors
      ⍝ ↑ all in same group as 2-cols ⎕EN ⎕DM
+          session.errors←0⍴session.errors
           {(≢⍵),1↓⍺}⌸errors
 ⍝
       }
@@ -145,7 +152,7 @@
 ⍝- -⎕IO-⍳
 ⍝- )
       }
-
+      
       addWSpath←{⍺←⊢
           ∨/'/\'∊ws←⍵:⊢ws       ⍝ assume extant path is good
           dir←2 ⎕NQ'.' 'GetEnvironment' 'dyalog'
@@ -231,28 +238,32 @@
 ⍝
       }
 
-      decode←{⍺←⊢
-          where←⍺
-          home←where=#  ⍝ would be #.IsoNNNNN for outward call
-          x←where.⍎
-          (a b c d e)←5↑⍵
-          tok←{⎕TGET session.callback}⍣home⊢0  ⍝ one at a time please!
-          res←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN⊣{⎕TPUT session.callback}⍣home⊢0
-              (a0 a1 a2 a3 a4 a5)←a=0 1 2 3 4 5
-              a0:x b
-              a1:(x b)c
-              a2:b(x c)d
-              a3:c⊢b{x ⍺,'←⍵'}c
+    ∇ res←where decode(a b c d e);home;x;tok;j;i
+      home←where=#  ⍝ would be #.IsoNNNNN for outward call
+      x←where.⍎
+      tok←{⎕TGET session.callback}⍣home⊢0  ⍝ one at a time please!
+      :Trap 0
+          :Select a
+          :Case 0 ⋄ res←0(x b)
+          :Case 1 ⋄ res←0((x b)c)
+          :Case 2 ⋄ res←0(b(x c)d)
+          :Case 3 ⋄ res←0(c⊢b{x ⍺,'←⍵'}c)
+          :CaseList 4 5
               (i j)←c d+where.⎕IO
-              a4:⍎'i(j where.{⊢⍺⌷[⍺⍺]',b,'})0'
-              a5:⍎'i(j where.{⊢(⍺⌷[⍺⍺]',b,')←⍵})e'
-          }0
-          tok←{⎕TPUT session.callback}⍣home⊢0  ⍝ next please!
-          res
+              :If a=4 ⋄ res←0(⍎'i(j where.{⊢⍺⌷[⍺⍺]',b,'})0')
+              :Else ⋄ res←0(⍎'i(j where.{⊢(⍺⌷[⍺⍺]',b,')←⍵})e')
+              :EndIf
+          :EndSelect
+      :Else
+          res←⎕EN ⎕DM
+      :EndTrap
+     
+      tok←{⎕TPUT session.callback}⍣home⊢0  ⍝ next please!
 ⍝ ⍺ target space
 ⍝ ⍵ encoded list
 ⍝   decode list and execute requisite syntax in target.
-      }
+⍝   return (0 value) if OK, (⎕EN ⎕DM) on failure
+    ∇
 
       derv←{⍺←⊢
           ⍕{
@@ -323,15 +334,33 @@
 ⍝   creates list that encodes syntax and includes arguments
       }
 
-      execute←{⍺←⊢
-          (name data)←⍵
-          space←#.⍎name
-          space decode data
+    ∇ r←execute(name data);z;n
+      space←#.⍎name
+      tracelog space name
+      :Trap 0
+          r←space decode 5↑data
+      :Else
+          ⎕TRAP←0 'S' ⋄ ∘ ⍝ WTF???!!!
+      :EndTrap
+      tracelog r
+      :If 0=⎕NC'session' ⍝ In the isolate
+          tracelog'in the isolate session'
+          :Trap 6
+              z←≡r ⍝ Materialize r to provoke VALUE ERROR
+          :Else
+              tracelog'got the value error!'
+              :If 2=⎕NC n←name,'error'
+                  r←⍎n ⋄ ⎕EX n
+              :Else
+                  r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
+              :EndIf
+          :EndTrap
+      :EndIf
 ⍝ this is the function called by RPCServer.Process
 ⍝ ⍵     name data
 ⍝ data  list created by encode below.
 ⍝ ←     result or assignment of decoded ⍵
-      }
+    ∇
 
       expose←{⍺←⊢
           (src snm)←⍵
@@ -437,7 +466,7 @@
           0::(⊃⎕DM)⎕SIGNAL ⎕EN                         ⍝
           z←checkWs⍣ws⊢new                             ⍝
           z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new       ⍝
-          localServer⍣li⊢new                           ⍝ cases
+          z←localServer⍣li⊢new                         ⍝ cases
           old⊣nam options.{⍎⍺,'←⍵'}new
      
 ⍝    }⍵
@@ -610,6 +639,7 @@
       }
 
     ∇ r←localServer r;srv;rc;z
+      →(0=⎕NC'session.homeport')⍴0
       :If r=0
       :AndIf r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
           {}DRC.Close srv ⍝ Left over - object there but no thread
@@ -708,7 +738,7 @@
           (source listen id)←⍵                           ⍝ this all happens remotely
           name←id.chrid
           root←⎕NS''
-          z←{root.⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)}⍣listen⊢1  ⍝ prepare for calls back
+          z←{root.⎕FX¨proxySpace.(⎕CR¨⎕NL ¯3),⊂⎕CR'tracelog'}⍣listen⊢1  ⍝ prepare for calls back
           root.iSpace←⎕THIS
           id.(port←home)
           id.(chrid←'Iso',⍕1+numid)
@@ -721,7 +751,7 @@
           z←#.DRC.Clt⍣listen⊢id.(chrid orig port)        ⍝ orig=host if local
           1⊣1(700⌶)root                                  ⍝ DOMAIN ERROR if no iSyntax
       }
-      
+         
     ∇ r←Reset mode;iso;clt;ok
       :If 2=⎕NC'session.assoc.iso'
           r←(⍕≢session.assoc.iso),' isolates, '
@@ -773,7 +803,8 @@
               spaces.onerror←tod'S' 'signal' 'debug' 'return'
               spaces.processes←tod'I' 1                 ⍝ per processor
               spaces.processors←tod'I'(processors ⍬)    ⍝ no. processors (fn ignores ⍵)
-              spaces.runtime←tod'B' 1                   ⍝ use runtime version
+              spaces.runtime←tod'B' 0                   ⍝ use runtime version
+              ⎕←'/// NB runtime set to 0'
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
@@ -836,22 +867,24 @@
         (⎕IO ⎕ML)←0 1
    
           iEvaluate←{⍺←⊢
+              z←tracelog ⍵
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
               z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
    ⍝     0::(⊃⎕DM)⎕SIGNAL ⎕EN            ⍝ signal here leaves busy on
-              (rc res)←iSend iD.tgt data       ⍝ the biz
+              (rc res)←z←iSend iD.tgt data       ⍝ the biz
+              z←tracelog'rc' 'res' 'home',⍪rc res home
               ok←0=rc
-              ~home:res                        ⍝ call back? then we're done
+              ~home:{rc=0:⍵ ⋄ ⎕SIGNAL rc}⍵                 ⍝ call back? then we're done
    ⍝ I /think/ we might need ⎕SIGNAL on error from ## (~home)
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
               ok:⊢res                          ⍝ spiffing!
    ⍝ record error and clock out
    ⍝ we have rc and res and presume that res is a ⎕DM
-              (pre msg)←'Isolate: ' 'Call back to session not enabled'
+              ⍝(pre msg)←'Isolate: ' 'Call back to session not enabled'
    ⍝ if expression of ⎕DM contains '##' replace error-name with above.
-              (⊃res)←pre,⊃{(1∊'##'⍷⍵)⊃⍺ msg}/2↑res
+              ⍝(⊃res)←pre,⊃{(1∊'##'⍷⍵)⊃⍺ msg}/2↑res
    ⍝ if 'f[] f' then drop 'f[] '
    ⍝  ...    (1⊃res)←{('f[] f'⍷⍵)↓⍵}↓1⊃res
               ss.errors{(⍺↓⍨63<≢⍺),⍵}←⊂(ss.assoc.group ID)rc res
@@ -878,7 +911,7 @@
               res←wait 2⍴res
               (rc nm ev res)←res                                ⍝ dest for trap on DRC.Wait
    ⍝ if rc is 0 res which will be (0 result)
-              rc=0:⊢res
+              rc=0:⊢1⊃res
    ⍝ else return rc and faked ⎕DM
               rc((⍕rc nm)ev)
          
@@ -887,10 +920,12 @@
           }
    
           iSyntax←{⍺←⊢
+              z←tracelog ⍵
               c←⊣/⍵
               '('=c:⊢3 32                            ⍝ if '(expr)' ⍝ 1 0 0 0 0 0
               '{'=c:⊢3 52                            ⍝ if '{defn}' ⍝ 1 1 0 1 0 0
-              '⎕'=c:⊢{x←⍎⍵ ⋄ c←⎕NC'x' ⋄ (2 3⍳c)⊃(2 0)(3 52)(0 0)}⍵ ⍝ assumes ⎕FNS ambi
+              '#'∊c:⊢0 0                             ⍝ # in anything un-parenthesised is an error
+              '⎕'=c:⊢{0::0 0 ⋄ x←⍎⍵ ⋄ c←⎕NC'x' ⋄ (2 3⍳c)⊃(2 0)(3 52)(0 0)}⍵ ⍝ assumes ⎕FNS ambi
                                                ⍝ ↑ reject ops & nss
               f←',⊢-⊂⍴⊃≡+!=⍳⊣↓↑|⍪⍕⍎∊⌽~×≠>⌊∨?⌷<≢⌈≥⍷⍉∪÷⍒⊥∧⍋⊖*○⍲⍱⍟⌹⊤≤∩'
          
@@ -924,9 +959,11 @@
         ∇
    
         ∇ coroner
-          :Implements destructor
-          (fn arg)←data
-          (whence.⍎fn)arg
+          :Implements destructor    
+          :Trap 0
+              (fn arg)←data
+              (whence.⍎fn)arg
+          :EndTrap
         ∇
    ⍝ set a destructor on an ordinary container space.
    ⍝ When the space into which the instance is set,
