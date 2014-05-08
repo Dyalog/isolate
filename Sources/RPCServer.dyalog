@@ -120,7 +120,7 @@
      
                       :If autoshut=1
                       :AndIf 0=≢2 2⊃#.DRC.Tree name
-                          ⎕←'Last connection lost - AutoShut initiated' ⋄ done←1
+                          ⍪quiet↓⊂'Last connection lost - AutoShut initiated' ⋄ done←1 ⋄ autoshut←2
                       :EndIf
      
                   :Case 'Receive'
@@ -155,9 +155,9 @@
               done←1
           :EndTrap
       :EndWhile
-      ⎕DL 1 ⍝ Give responses time to complete
+      :If autoshut≠2 ⋄ ⎕DL 1 ⋄ :EndIf ⍝ Give responses time to complete
       {}##.DRC.Close name
-      ⎕←'Server ',name,' terminated.'
+      ⍪quiet↓⊂'Server ',name,' terminated.'
     ∇
 
 :EndNamespace

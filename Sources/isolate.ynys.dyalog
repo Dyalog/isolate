@@ -686,14 +686,25 @@
 ⍝
       }
 
-      newSession←{⍺←⊢
-          0∊⎕NC'session.started':1
-          0.0001<|session.started-sessionStart''
+    ∇ r←newSession w;z
+      :If 0=⎕NC'session.started'
+      :OrIf 0.0001<|session.started-sessionStart''
+          r←1
+      :Else ⋄ r←0 ⍝ not a new session
+          :If session.listen ⍝ take opportunity to check listener is up
+              :If 2≠⎕NC'session.listeningtid'
+              :OrIf session.listeningtid(~∊)⎕TNUMS
+                  ⎕←'localserver restarted'
+                  z←localServer 1
+              :EndIf
+          :EndIf
+      :EndIf
+     
 ⍝ The session is new if session.started is missing.
 ⍝ It needs to be restarted if session.started differs from the actual
 ⍝ start of the session by more than 8.64 seconds (1/10000 of a day)
 ⍝ that indicates that the ws was saved with the session space intact
-      }
+    ∇
 
       processors←{⍺←⊢
           (1111⌶⊢⊢)1111⌶1
@@ -806,8 +817,7 @@
               tod←{(2⍴⍵),⊂1↓⍵}                          ⍝ type: Str Bool Int Ref
 ⍝ ensure all param names are minuscule as arg to Config is converted thus.
 ⍝        spaces.param← tod 'S' 'Default' 'and' 'the' 'Rest'
-              spaces.debug←tod'B' 1                     ⍝ cut back on error
-              ⎕←'/// NB debug set to 1'
+              spaces.debug←tod'B' 0                     ⍝ cut back on error
               spaces.drc←tod'R'#                        ⍝ copy into # if # and missing
               spaces.listen←tod'B' 1                    ⍝ can isolate call back to ws
               ⎕←'/// NB listen set to 1'
