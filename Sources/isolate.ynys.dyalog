@@ -4,7 +4,7 @@
     (⎕IO ⎕ML)←0 1      
 
     tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵} 
-    ⍝tracelog←{}        ⍝ uncomment this line to disable logging
+    ⍝tracelog←{}        ⍝ uncomment this line to disable all logging
 
     retry_limit←20      ⍝ How many retries 
     retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
@@ -74,8 +74,7 @@
           ss.orig←whoami''
           ss.homeport←7051
           ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
- ⍝         ss.listen←10 listen until⊢⍣op.listen⊢0  ⍝ "calls back"?
-          ss.errors←0⍴,⊂0 0('' '')                 ⍝ ⎕EN ⎕DM for latest group
+          ss.errors←0⍴,⊂0 0('' '')                ⍝ ⎕EN ⎕DM for latest group
           ss.nextid←2⊃⎕AI                         ⍝ isolate id
           z←⎕TPUT ss.callback←1+(2*15)|+/⎕AI      ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
@@ -86,7 +85,7 @@
      
           procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
           pids←(1⊃⎕AI)+⍳⍴procs
-          procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids
+          procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
           pclts←pids{0≠⊃z←DRCClt('PROC',⍕⍺)ss.orig ⍵:'' ⋄ 1⊃z}¨ports
           0∊≢¨pclts:'UNABLE TO CONNECT TO NEW PROCESSES'⎕SIGNAL 6
           ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
@@ -202,15 +201,18 @@
 ⍝
       }
       
-    ∇ r←cleanDM r;t;msg;line;caret
+    ∇ r←cleanDM r;t;msg;line;caret;m
       →(0=⊃r)⍴0         ⍝ Not an error
       →(3≠⍴t←1⊃r)⍴0     ⍝ Not a ⎕DM
       (msg line caret)←t
       msg←('⍎'=⊃msg)↓msg
-      ⎕TRAP←0 'S'
+      ⍝ ⎕TRAP←0 'S' ⋄ ∘
       :If 'f[] f←'≡6↑line ⋄ (line caret)←6↓¨line caret
       :ElseIf 'decode['≡7↑line
           :If ∨/':Case'⍷line ⋄ line←caret←''
+          :ElseIf ∨/m←'c⌷[d]where.'⍷line
+              (line caret)←(11+m⍳1)↓¨line caret
+              line←((⌊/line⍳') ')↑line),'[...]',('←'∊line)/'←...'
           :Else ⋄ (line caret)←(1+line⍳']')↓¨line caret
           :EndIf
       :EndIf
@@ -250,10 +252,9 @@
 
       dateNo←{⍺←⊢
           ⊢2 ⎕NQ'.' 'DateToIDN'⍵
-⍝
       }
 
-    ∇ res←where decode(a b c d e);home;x;tok;j;i
+    ∇ res←where decode(a b c d e);home;x;tok
       home←where=#  ⍝ would be #.IsoNNNNN for outward call
       x←where.⍎
       tok←{⎕TGET session.callback}⍣home⊢0  ⍝ one at a time please!
@@ -263,15 +264,11 @@
           :Case 1 ⋄ res←0((x b)c)
           :Case 2 ⋄ res←0(b(x c)d)
           :Case 3 ⋄ res←0(c⊢b{x ⍺,'←⍵'}c)
-          :CaseList 4 5
-              (i j)←c d+where.⎕IO
-              :If a=4 ⋄ res←0(⍎'i(j where.{⊢⍺⌷[⍺⍺]',b,'})0')
-              :Else ⋄ res←0(⍎'i(j where.{⊢(⍺⌷[⍺⍺]',b,')←⍵})e')
-              :EndIf
+          :Case 4 ⋄ res←0(⍎'c⌷[d]where.',b)
+          :Case 5 ⋄ res←0(⍎'(c⌷[d]where.',b,')←e')
           :EndSelect
       :Else
           res←⎕DMX.(EN DM)
-          ⍝ ⎕TRAP←0 'S' ⋄ ∘
       :EndTrap
      
       tok←{⎕TPUT session.callback}⍣home⊢0  ⍝ next please!
@@ -279,6 +276,16 @@
 ⍝ ⍵ encoded list
 ⍝   decode list and execute requisite syntax in target.
 ⍝   return (0 value) if OK, (⎕EN ⎕DM) on failure
+⍝ Syntax cases:
+⍝ a | b      | c       | d    | e
+⍝ 0 | array  |         |      |
+⍝ 0 | nilad  |         |      |
+⍝ 0 | (expr) |         |      |
+⍝ 1 | monad  | rarg    |      |
+⍝ 2 | larg   | dyad    | rarg |
+⍝ 3 | array  | value   |      |
+⍝ 4 | array  | indices | axes |
+⍝ 5 | array  | indices | axes | value
     ∇
 
       derv←{⍺←⊢
@@ -339,7 +346,7 @@
               n←ra.⍎¨nms
               (0⊃n)←(-2⊃n)+(0,1⊃n)/0,0⊃n     ⍝ 0+indices sans ⎕NULLs
               (1⊃n)←{⍵/⍳⍴⍵}1⊃n               ⍝ 0+axes
-              ((⍴n)↑1 1 0)/n
+              ((⍴n)↑1 1 0 1)/n
           }
           args←la,(⊂x),pargs ra
           code←nc{6|0(3 2)(3 3)(2 2)(2 3)(2 4)⍳⊂⍺,⍵}⍴args
