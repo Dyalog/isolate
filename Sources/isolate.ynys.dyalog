@@ -1,14 +1,14 @@
 ﻿:namespace ynys
 ⍝ ## ←→ #.isolate
 
-    (⎕IO ⎕ML)←0 1      
+    (⎕IO ⎕ML)←0 1
 
-    tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵} 
+    tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵}
     ⍝tracelog←{}        ⍝ uncomment this line to disable all logging
 
-    retry_limit←20      ⍝ How many retries 
+    retry_limit←20      ⍝ How many retries
     retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
-  
+
       AddServer←{⍺←⊢
           msg←messages'⍝- '
           'server'≡Config'status':0⊃msg
@@ -25,7 +25,7 @@
 ⍝- Argument must be 'ip-address' (ip-ports)
 ⍝- IP-address nor IP-ports can be empty
       }
-      
+
     ∇ r←DRCClt args;count
       ⍝ Create a DRC Client, looping a bit
      
@@ -55,6 +55,17 @@
 ⍝           ⍵:name          : value
 ⍝           ⍵:name value    : old value having set new in param
       }
+      
+    ∇ checkLocalServer w;z
+      ⍝ take opportunity to check listener is up
+      :If session.listen
+          :If 2≠⎕NC'session.listeningtid'
+          :OrIf session.listeningtid(~∊)⎕TNUMS
+              ⎕←'ISOLATE: Callback server restarted'
+              z←localServer 1
+          :EndIf
+      :EndIf
+    ∇
 
       Init←{⍺←⊢
           ⎕THIS.⎕IO←0
@@ -74,12 +85,13 @@
           ss.orig←whoami''
           ss.homeport←7051
           ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
-          ss.errors←0⍴,⊂0 0('' '')                ⍝ ⎕EN ⎕DM for latest group
-          ss.nextid←2⊃⎕AI                         ⍝ isolate id
-          z←⎕TPUT ss.callback←1+(2*15)|+/⎕AI      ⍝ queue for calls back
+          ss.errors←0⍴,⊂0 0('' '')          ⍝ ⎕EN ⎕DM for latest group
+          ss.nextid←2⊃⎕AI                   ⍝ isolate id
+          ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
      
-          ((ws rt)iso)←op.(workspace runtime)'-isolate=isolate'
+          maxws←' -maxws=',⍕2 ⎕NQ'.' 'GetEnvironment' 'maxws'
+          ((ws rt)iso)←op.(workspace runtime)('-isolate=isolate -onerror=',(⍕op.onerror),maxws)
           ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
      
@@ -104,16 +116,23 @@
           {⍵.({⍵,⍪⍎⍕⍵}↓⎕NL 2)}⍣('namespace'≢minuscule ⍵)⊢session.assoc
 ⍝
       }
-
-      LastError←{⍺←⊢
-          newSession'':0 2⍴0
-          0∊⍴session.errors:0 2⍴0
-          errors←↑¨↑session.errors←{⍺/⍨⍵=⊢/⍵}∘(⊣/↑)⍨session.errors
-     ⍝ ↑ all in same group as 2-cols ⎕EN ⎕DM
-          session.errors←0⍴session.errors
-          {(≢⍵),1↓⍺}⌸errors
-⍝
-      }
+      
+    ∇ r←{default}Values name
+      :If 0=⎕NC'default' ⋄ default←⊢ ⋄ :EndIf
+      r←⊃default(1⊃⎕RSI).(702⌶)name
+    ∇
+      
+    ∇ r←Failed name
+      r←(1⊃(1⊃⎕RSI).(702⌶)name)∊2 3
+    ∇
+          
+    ∇ r←Running name;complete;failed
+      r←0=1⊃(1⊃⎕RSI).(702⌶)name
+    ∇
+      
+    ∇ r←Available name
+      r←(1⊃(1⊃⎕RSI).(702⌶)name)∊4 5
+    ∇
 
       New←{⍺←⊢
           z←Init 0
@@ -152,6 +171,12 @@
 ⍝- )
       }
       
+    ∇ x qsignal y
+      ⍝ To help signal an error that will not terminate a dfn capsule
+      y←(y 86)[y>999] ⍝ Use 86 for interrupts and CONGA ERRORS
+      x ⎕SIGNAL y
+    ∇
+
       addWSpath←{⍺←⊢
           ∨/'/\'∊ws←⍵:⊢ws       ⍝ assume extant path is good
           dir←2 ⎕NQ'.' 'GetEnvironment' 'dyalog'
@@ -200,7 +225,7 @@
           z←{}'⎕IO'z.⎕CY ⍵              ⍝ force value error → return ⍵
 ⍝
       }
-      
+
     ∇ r←cleanDM r;t;msg;line;caret;m
       →(0=⊃r)⍴0         ⍝ Not an error
       →(3≠⍴t←1⊃r)⍴0     ⍝ Not a ⎕DM
@@ -254,11 +279,10 @@
           ⊢2 ⎕NQ'.' 'DateToIDN'⍵
       }
 
-    ∇ res←where decode(a b c d e);home;x;tok
+    ∇ res←where decode(a b c d e);home;x
       home←where=#  ⍝ would be #.IsoNNNNN for outward call
       x←where.⍎
-      tok←{⎕TGET session.callback}⍣home⊢0  ⍝ one at a time please!
-      :Trap 0
+      :Trap 999×##.onerror≡'debug'
           :Select a
           :Case 0 ⋄ res←0(x b)
           :Case 1 ⋄ res←0((x b)c)
@@ -270,8 +294,6 @@
       :Else
           res←⎕DMX.(EN DM)
       :EndTrap
-     
-      tok←{⎕TPUT session.callback}⍣home⊢0  ⍝ next please!
 ⍝ ⍺ target space
 ⍝ ⍵ encoded list
 ⍝   decode list and execute requisite syntax in target.
@@ -357,23 +379,26 @@
 ⍝   creates list that encodes syntax and includes arguments
       }
 
-    ∇ r←execute(name data);z;n
+    ∇ r←execute(name data);z;n;⎕TRAP
       space←#.⍎name
-      r←space decode 5↑data
-      :If 0=⎕NC'session' ⍝ In the isolate
-          ⍝ tracelog'in the isolate session'
-          :Trap 6
-              z←+r ⍝ Block on futures here to provoke (and trap) the VALUE ERROR
-          :Else
-              :If 2=⎕NC n←name,'error'
-                  r←⍎n ⋄ ⎕EX n
-                  (1 0⊃r),←' IN CALLBACK'
+      :Hold 'ISO_',name
+          :If ##.onerror≡'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
+          r←space decode 5↑data
+     
+          :If 0=⎕NC'session' ⍝ In the isolate
+              :Trap 6
+                  z←+r ⍝ Block on futures here to provoke (and trap) the VALUE ERROR
               :Else
-                  r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
-              :EndIf
-          :EndTrap
-      :EndIf
-      r←cleanDM r
+                  :If 2=⎕NC n←name,'error'
+                      r←⍎n ⋄ ⎕EX n
+                      (1 0⊃r),←' IN CALLBACK'
+                  :Else
+                      r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
+                  :EndIf
+              :EndTrap
+          :EndIf
+          r←cleanDM r
+      :EndHold
 ⍝ this is the function called by RPCServer.Process
 ⍝ ⍵     name data
 ⍝ data  list created by encode below.
@@ -436,7 +461,7 @@
 ⍝ all the other stuff as this seems to do it ok.
      
       }
-   
+
       getDefaultWS←{
           ∨/⍵⍷⎕WSID:⎕WSID
           ⍵ ⍝ ⍵ is normally 'isolate'
@@ -454,7 +479,7 @@
 
       getSet←{⍺←⊢
      
-          0∊⍴⍵:options.({⍵,⍪⍎⍕⍵}↓⎕NL 2 9)
+          0∊⍴⍵:{(~⍵[;0]∊'debug' 'status')⌿⍵}options.({⍵,⍪⍎⍕⍵}⎕NL-2 9)
           one←1=≡⍵
           two←one<(,2)≡⍴⍵
           sig11←⎕SIGNAL∘11
@@ -510,18 +535,10 @@
 
       isoStart←{⍺←⊢
      
+          ##.onerror←2 ⎕NQ'.' 'GetEnvironment' 'onerror'
           iso←'isolate'
           parm←2 ⎕NQ'.' 'GetEnvironment'iso
           parm≢iso:shy←1
-     
-⍝     0::{
-⍝         'R'∊⊃⊢/'#'⎕WG'APLVersion':{
-⍝             Caption←'Isolate Startup Failure'
-⍝             Text←⎕DM
-⍝             ⎕DQ'Msg'⎕WC'MsgBox'Caption Text'Error'
-⍝         }''
-⍝         (⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
-⍝     }⍬
      
           f00←{
               'R'∊⊃⊢/'#'⎕WG'APLVersion':{
@@ -531,8 +548,7 @@
               }''
               (⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
           }
-          ⍝ ⎕TRAP←0 'C' 'f00⍬'
-          ⎕TRAP←0 'S' ⍝ /// Debugging
+          ⎕TRAP←0 'C' 'f00⍬'
      
           ##.DRC←⎕THIS.DRC←getDRC #
           ##.RPCServer.Boot
@@ -552,7 +568,7 @@
           z←⎕TGET ss.assockey         ⍝ see Init
           procs←{(num distrib ¯1+⊢/⍵)⌿⊣/⍵},∘≢⌸(⊣/ss.procs),ss.assoc.(busy/proc)
           ss.assoc.(iso proc busy seq),←num⍴¨numid procs 1(⌊/numid)
-          z←⎕TPUT ss.assockey   ⍝ ↑ all have same "seq" see "group←{" in Init
+          z←⎕TPUT ss.assockey         ⍝ ↑ all have same "seq" see "group←{" in Init
      
           (host port)←↓⍉{⍵[⍵[;0]⍳procs;2 3]}ss.procs
           data←↓host,(⊂ss.orig),chrid,numid,tgt,ss.homeport,⍪port
@@ -698,13 +714,7 @@
       :OrIf 0.0001<|session.started-sessionStart''
           r←1
       :Else ⋄ r←0 ⍝ not a new session
-          :If session.listen ⍝ take opportunity to check listener is up
-              :If 2≠⎕NC'session.listeningtid'
-              :OrIf session.listeningtid(~∊)⎕TNUMS
-                  ⎕←'localserver restarted'
-                  z←localServer 1
-              :EndIf
-          :EndIf
+          checkLocalServer ⍬
       :EndIf
      
 ⍝ The session is new if session.started is missing.
@@ -780,7 +790,7 @@
           z←#.DRC.Clt⍣listen⊢id.(chrid orig port)        ⍝ orig=host if local
           1⊣1(700⌶)root                                  ⍝ DOMAIN ERROR if no iSyntax
       }
-         
+
     ∇ r←Reset mode;iso;clt;ok
       :If 2=⎕NC'session.assoc.iso'
           r←(⍕≢session.assoc.iso),' isolates, '
@@ -808,6 +818,10 @@
       ⎕EX'session'
     ∇
 
+    ∇ stop;⎕TRAP
+      ⎕TRAP←0 'S' ⋄ ∘
+    ∇
+
       sessionStart←{⍺←⊢
           24 60 60 1000{(dateNo ⍵)-(⍺-⍺⍺⊥3↓⍵)÷×/⍺⍺}/(2⊃⎕AI)⎕TS
 ⍝ diff twixt ⎕ts and ⎕ai
@@ -822,24 +836,24 @@
           z←{
               spaces←here.(types options domains)←here.⎕NS¨⍬ ⍬ ⍬
               tod←{(2⍴⍵),⊂1↓⍵}                          ⍝ type: Str Bool Int Ref
-⍝ ensure all param names are minuscule as arg to Config is converted thus.
-⍝        spaces.param← tod 'S' 'Default' 'and' 'the' 'Rest'
+     ⍝ ensure all param names are minuscule as arg to Config is converted thus.
+     ⍝        spaces.param← tod 'S' 'Default' 'and' 'the' 'Rest'
               spaces.debug←tod'B' 0                     ⍝ cut back on error
               spaces.drc←tod'R'#                        ⍝ copy into # if # and missing
-              spaces.listen←tod'B' 1                    ⍝ can isolate call back to ws
-              ⎕←'/// NB listen set to 1'
+              spaces.listen←tod'B' 0                    ⍝ can isolate call back to ws
+              ⍝ ⎕←'/// NB listen set to 1'
               spaces.onerror←tod'S' 'signal' 'debug' 'return'
               spaces.processes←tod'I' 1                 ⍝ per processor
               spaces.processors←tod'I'(processors ⍬)    ⍝ no. processors (fn ignores ⍵)
-              spaces.runtime←tod'B' 0                   ⍝ use runtime version
-              ⎕←'/// NB runtime set to 0'
+              spaces.runtime←tod'B' 1                   ⍝ use runtime version
+              ⍝ ⎕←'/// NB runtime set to 0'
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
           }⍣new⊢0
           0::(⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
           ⊢getSet ⍵                                     ⍝ this where Config called prior Init
-⍝ called by Config before Init runs and by Init when it does.
+     ⍝ called by Config before Init runs and by Init when it does.
 ⍝ set default options and permit user changes
 ⍝ but leave Init to apply them.
       }
@@ -888,12 +902,12 @@
 ⍝ and beginning with "y" it's at the bottom of autocomplete
       }
 
-   
+
     :namespace proxySpace
    ⍝ ## ←→ #.isolate.ynys
-   
+
         (⎕IO ⎕ML)←0 1
-   
+
           iEvaluate←{⍺←⊢
               ⍝z←tracelog ⍵
               data←⍺ iSpace.encode ⍵
@@ -902,48 +916,40 @@
               z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
               (rc res)←z←iSend iD.tgt data       ⍝ the biz
               ok←0=rc
-              ~home:{rc=0:⍵ ⋄ ⍎⎕←'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
+              ~home:{rc=0:⍵ ⋄ ⍎'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
               ok:⊢res                           ⍝ spiffing!
-   ⍝ record error and clock out
-   ⍝ we have rc and res and presume that res is a ⎕DM
-              ⍝(pre msg)←'Isolate: ' 'Call back to session not enabled'
-   ⍝ if expression of ⎕DM contains '##' replace error-name with above.
-              ⍝(⊃res)←pre,⊃{(1∊'##'⍷⍵)⊃⍺ msg}/2↑res
-   ⍝ if 'f[] f' then drop 'f[] '
-   ⍝  ...    (1⊃res)←{('f[] f'⍷⍵)↓⍵}↓1⊃res
-              ss.errors{(⍺↓⍨63<≢⍺),⍵}←⊂(ss.assoc.group ID)rc res
-              1:                               ⍝ VALUE ERROR: Future has no value
+              ((⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res)iSpace.qsignal rc
    ⍝ execute expression supplied to isolate
           }
-   
-          iSend←{data←⍵
-              send←((⍕iSpace),'.execute')data      ⍝ RPCServer runs this
-              ⎕TRAP←0 'C' '→1+⎕lc ⊣ res← ⎕DMX.(EN DM)'
-              res←iSpace.DRC.Send iD.chrid send
-              rc nm ev data←4↑res                  ⍝ dest for trap on DRC.Send
-              0≠rc:⊢rc((⍕rc nm)ev)                 ⍝ ret ⎕EN ⎕DM
-              wait←{
-                  res←(rc nm ev data)←4↑iSpace.DRC.Wait 1⊃⍵
-                  rc=100:∇ ⍵⊣⎕DL 0.1
-                  rc≠0:⊢res
-                  ev≡'Progress':∇ ⍵
-                  ev≡'Receive':res
-            ⍝ any more?
-              }
-   ⍝ non-zero apart from 100 from DRC.Wait above
-   ⍝  will blow ↓ this with DOMAIN ERROR
-              res←wait 2⍴res
-              (rc nm ev res)←res                                ⍝ dest for trap on DRC.Wait
-   ⍝ if rc is 0 res which will be (0 result)
-              rc=0:⊢1⊃res
-   ⍝ else return rc and faked ⎕DM
-              rc((⍕rc nm)ev)
-         
+
+        ∇ r←iSend data;send;ev;nm;rc;res;cmd
+          send←((⍕iSpace),'.execute')data    ⍝ RPCServer runs this
+          :Trap 0 ⋄ res←iSpace.DRC.Send iD.chrid send
+          :Else ⋄ 'ISOLATE: INTERNAL ERROR - RESET REQUIRED'iSpace.qsignal 6
+          :EndTrap
+          rc cmd ev data←4↑res
+          :If 0≠rc ⋄ r←86(('COMMUNICATIONS FAILURE ',⍕rc cmd)ev)          ⍝ ret ⎕EN ⎕DM
+          :Else
+         WAIT:
+              :Trap 1000
+                  :Repeat
+                      res←(rc nm ev data)←4↑iSpace.DRC.Wait cmd
+                  :Until ~(rc=100)∨ev≡'Progress'
+              :Else
+                  iSpace.checkLocalServer ⍬
+                  ⍞←'ISOLATE: Interrupt - continue waiting (Y/N)? '
+                  →(∨/'Yy'∊⊃{(1+⍵⍳'?')↓⍵}⍞~' ')⍴WAIT
+                  ('USER INTERRUPT ',⍕⎕DMX.EN)iSpace.qsignal 6
+              :EndTrap
+              :If rc=0 ⋄ r←1⊃data    ⍝ if rc is 0 res which will be (0 result)
+              :Else ⋄ r←rc((⍕rc nm)ev) ⍝ else return rc and faked ⎕DM
+              :EndIf
    ⍝ called from iSyntax, iEvaluate and from
    ⍝ ##.cleanup to remove isolate from remote process
-          }
-   
+          :EndIf
+        ∇
+
           iSyntax←{⍺←⊢
               ⍝z←tracelog ⍵
               c←⊣/⍵
@@ -968,13 +974,13 @@
               1:⊢r
    ⍝ return nameclass and syntax for supplied name (string)
           }
-   
+
     :endnamespace ⍝ proxySpace
-   
+
     :namespace qv
         ##.(⎕io ⎕ml)←0 1
     :endnamespace
-   
+
     :Class suicide
         ∇ inst←New data;whence
           :Access public shared
@@ -982,9 +988,9 @@
           inst←whence.⎕NEW ⎕THIS
           inst.(whence data)←whence data
         ∇
-   
+
         ∇ coroner
-          :Implements destructor    
+          :Implements destructor
           :Trap 0
               (fn arg)←data
               (whence.⍎fn)arg

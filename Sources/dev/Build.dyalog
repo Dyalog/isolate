@@ -1,5 +1,5 @@
 ﻿ Build;file;ver;src;t;version;rev;path
-⍝ Build distribution workspace containing unsalted classes
+⍝ Build distribution workspace containing unsalted classes and namespaces
 ⍝    Insert SVN revision number
 
  (⎕IO ⎕ML)←1 1
@@ -12,8 +12,11 @@
  :EndIf
 
  'isolate'⎕NS''
+ 'isolate.ynys'⎕NS''
  BuildCovers
- :For file :In 'isolate.ynys.dyalog' 'APLProcess' 'RPCServer'
+ ⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate.ynys -noname -nolink -disperse'
+
+ :For file :In 'APLProcess' 'RPCServer'
      ⎕←⎕SE.SALT.Load'⍵\Sources\',file,' -target=isolate -nolink'
  :EndFor
 
@@ -34,5 +37,5 @@
  ⎕LX←'#.isolate.ynys.isoStart ⍬'
  ⎕←'      )WSID ',⎕WSID←path,'Distribution\isolate.dws'
  ⎕←'⍝ Now:'
- ⎕←'      ⎕EX ⎕NL 2 3'
+ ⎕←'      )erase Build BuildCovers Clear Load'
  ⎕←'      )SAVE'

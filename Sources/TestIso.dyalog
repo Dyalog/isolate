@@ -5,13 +5,13 @@
     
     ∇ msgs expect expr;z;got
     ⍝ Check that the expected error was received
-      :Trap 6
+      :Trap 86 ⍝ FUTURE ERROR
           z←+⍎expr ⍝ force future to materialize
           'DID NOT FAIL'⎕SIGNAL 11
       :Else         ⍝ We are expecting a VALUE ERROR
-          got←(⍴msgs)↑↓3⊃,#.isolate.LastError''
-          :If (msgs~¨' ')≢got~¨' '
-              'expected' 'got'⍪msgs,⍪got
+          got←⎕DMX.Message
+          :If ((∊⍕¨msgs)~':: ')≢got~': '
+              'expected' 'got'⍪⍉⍪msgs got
               ∘
               ⎕SIGNAL something
           :EndIf
@@ -33,10 +33,18 @@
       #.isolate.Reset 0
      
       assert 2 4 6 8≡{⍵+⍵}#.IÏ⍳4
+     
       time←3⊃⎕AI ⋄ z←⎕DL #.IÏ⍳4
+      assert 100>⎕←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
+      z←+/z                   ⍝ This should block
+      assert 4<(3⊃⎕AI)-time   ⍝ So now we should be >4s
+     
+⍝ Check that defined functions do not block...
+      time←3⊃⎕AI ⋄ z←{⍵ ⍵}⎕DL #.IÏ 1
       assert 100>(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
       z←+/z                   ⍝ This should block
       assert 4<(3⊃⎕AI)-time   ⍝ So now we should me >4s
+     
      
       z←'Basic Tests Completed'
     ∇
@@ -77,7 +85,7 @@
       is.newmat←2 2⍴⍳4               ⍝ Case 3
       assert is.newmat≡2 2⍴⍳4
       assert ns.mat[1;]≡is.mat[1;]   ⍝ Case 4
-      is.mat[3;]←⍳4 ⋄ ns.mat[3;]←⍳4  ⍝ Case 5
+      ns.mat[3;]←⍳4⊣is.mat[3;]←⍳4    ⍝ Case 5
       assert ns.mat≡is.mat
      
       ⍝ Test indexing cases again with ⎕IO←0 in space
@@ -96,35 +104,30 @@
      
       is.fail←1 ⍝ Should make all the defined fns crash
      
-      'VALUE ERROR' 'nosuchvar'expect'is.nosuchvar'        ⍝ Case 0
-      'DOMAIN ERROR' 'nil[1] r←1÷~fail'expect'is.nil'
-      'DOMAIN ERROR' '(1÷0)'expect'is.(1÷0)'
-      'DOMAIN ERROR' 'mon[1] r←1÷~fail'expect'is.mon 0'   ⍝ Case 1
-      'DOMAIN ERROR' 'dya[1] r←1÷~fail'expect'0 is.dya 0' ⍝ Case 2
+      6 'VALUE ERROR' 'nosuchvar'expect'is.nosuchvar'           ⍝ Case 0
+      11 'DOMAIN ERROR' 'nil[1] r←1÷~fail'expect'is.nil'
+      11 'DOMAIN ERROR' '(1÷0)'expect'is.(1÷0)'
+      11 'DOMAIN ERROR' 'mon[1] r←1÷~fail'expect'is.mon 0'      ⍝ Case 1
+      11 'DOMAIN ERROR' 'dya[1] r←1÷~fail'expect'0 is.dya 0'    ⍝ Case 2
       ⍝ is.(2+2)←3 ⍝ Can't think of a way to get Case 3 to fail in isolate
-      'INDEX ERROR' 'mat[...]'expect'+is.mat[4;]'       ⍝ Case 4
-      :Trap 11
-          'INDEX ERROR' 'mat[...]←...'expect'+is.mat[4;]←2 2⍴3 4'    ⍝ Case 5
-      :Else ⍝ ↑↑↑ this FAILS to fail :-)
-          ⎕←'Still failing:' ⋄ ↑⎕DM
-      :EndTrap
+      3 'INDEX ERROR' 'mat[...]'expect'+is.mat[4;]'             ⍝ Case 4
+      3 'INDEX ERROR' 'mat[...]←...'expect'+is.mat[4;]←2 2⍴3 4' ⍝ Case 5
      
       z←'Syntax Tests Completed'
     ∇
 
-    ∇ z←Errors;is
+    ∇ z←Errors;is;result
      ⍝ More advanced error handling
      
       #.isolate.Config'listen' 1
       #.isolate.Config'onError' 'signal'
       #.isolate.Reset 0
      
-      assert 5=≢z←{1 2 3÷⍵}#.IÏ 1 2(3 4)(5 6)0
-      assert(2⊃z)≡0.5 1 1.5
-      :Trap 6 ⋄ assert 0=≢3⊃z ⍝ This is expected to fail
-      :Else
-          assert(2 2⍴1 11 2 5)≡{⍵[⍋⍵;]}2(↑⍤1)#.isolate.LastError''
-      :EndTrap
+      assert 5=≢result←{1 2 3÷⍵}#.IÏ 1 2(3 4)(5 6)0
+      assert(2⊃result)≡0.5 1 1.5
+      5 'LENGTH ERROR' '{1 2 3÷⍵}'expect'3⊃result'
+      5 'LENGTH ERROR' '{1 2 3÷⍵}'expect'4⊃result'
+      11 'DOMAIN ERROR' '{1 2 3÷⍵}'expect'5⊃result'
      
       is←#.ø''
       ⎕EX'NNNN'

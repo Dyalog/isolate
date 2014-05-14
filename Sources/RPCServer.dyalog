@@ -83,8 +83,8 @@
       srvparams←2↓args
      
       :If 0=⎕NC'start' ⋄ start←1 ⋄ :EndIf         ⍝ start may be (start quiet)
-      rt←'R'∊'.'⎕WG'APLVersion'                   ⍝ Runtime or DLLRT           ⍝ PL
-      (start quiet autoshut)←0 rt 0∨3↑start                                               ⍝ PL
+      rt←'R'∊'.'⎕WG'APLVersion'                   ⍝ Runtime or DLLRT
+      (start quiet autoshut)←0 rt 0∨3↑start
       {}##.DRC.Init''
      
       :If start
@@ -101,7 +101,7 @@
       :EndIf
      
       ⍝ Handle the server (maybe in a new thread)
-      ⍪quiet↓⊂'Thread ',(⍕⎕TID),' is now handling server ''',name,'''.'    ⍝ PL
+      ⍪quiet↓⊂'Thread ',(⍕⎕TID),' is now handling server ''',name,'''.'
       done←0 ⍝ Done←1 in function "End"
      
       :While ~done

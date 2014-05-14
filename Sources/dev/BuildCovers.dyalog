@@ -7,7 +7,6 @@
  IÏ←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llEach⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.llEach)⍵}
  o_II←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llOuter⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.llOuter)⍵}
  ø←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.New⊢⍵ ⋄ ⍺(#.isolate.ynys.New)⍵}
- ⎕FX'r←DMÏ' 'r←#.isolate.ynys.LastError '''''
 
  :With isolate
      AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.AddServer⊢⍵ ⋄ ⍺(#.isolate.ynys.AddServer)⍵}
@@ -16,6 +15,10 @@
      LastError←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍺(#.isolate.ynys.LastError)⍵}
      New←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.New⊢⍵ ⋄ ⍺(#.isolate.ynys.New)⍵}
      Reset←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.Reset⊢⍵ ⋄ ⍺(#.isolate.ynys.Reset)⍵}
+     Values←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.Values⊢⍵ ⋄ ⍺(#.isolate.ynys.Values)⍵}
+     Available←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ #.isolate.ynys.Available ⍵}
+     Failed←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ #.isolate.ynys.Failed ⍵}
+     Running←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ #.isolate.ynys.Running ⍵}
 
      StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(#.isolate.ynys.StartServer)⍵}
      ll←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.ll⊢⍵ ⋄ ⍺(⍺⍺ #.isolate.ynys.ll)⍵}
