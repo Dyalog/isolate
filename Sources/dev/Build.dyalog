@@ -14,11 +14,12 @@
  'isolate'⎕NS''
  'isolate.ynys'⎕NS''
  BuildCovers
- ⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate.ynys -noname -nolink -disperse'
 
- :For file :In 'APLProcess' 'RPCServer'
-     ⎕←⎕SE.SALT.Load'⍵\Sources\',file,' -target=isolate -nolink'
- :EndFor
+ ⎕←⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate.ynys -noname -nolink -disperse'
+ 'RPCServer'isolate.⎕NS''
+ ⎕←⎕SE.SALT.Load'⍵\Sources\RPCServer -target=isolate.RPCServer -nolink -disperse'
+ ⎕←⎕SE.SALT.Load'⍵\Sources\APLProcess -target=isolate -nolink'
+ isolate.(⎕IO ynys.⎕IO ynys.proxySpace.⎕IO)←0
 
  :If 0=⍴rev←⎕CMD'subwcrev ',path
      ⎕←'NB: Unable to get SVN revision information!'

@@ -62,6 +62,7 @@
           :If 2≠⎕NC'session.listeningtid'
           :OrIf session.listeningtid(~∊)⎕TNUMS
               ⎕←'ISOLATE: Callback server restarted'
+              onerror←options.onerror
               z←localServer 1
           :EndIf
       :EndIf
@@ -282,7 +283,7 @@
     ∇ res←where decode(a b c d e);home;x
       home←where=#  ⍝ would be #.IsoNNNNN for outward call
       x←where.⍎
-      :Trap 999×##.onerror≡'debug'
+      :Trap 999×{0::0 ⋄ ##.onerror≡⍵}'debug'
           :Select a
           :Case 0 ⋄ res←0(x b)
           :Case 1 ⋄ res←0((x b)c)
@@ -382,7 +383,7 @@
     ∇ r←execute(name data);z;n;⎕TRAP
       space←#.⍎name
       :Hold 'ISO_',name
-          :If ##.onerror≡'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
+          :If {0::0 ⋄ ##.onerror≡⍵}'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
           r←space decode 5↑data
      
           :If 0=⎕NC'session' ⍝ In the isolate
@@ -977,9 +978,9 @@
 
     :endnamespace ⍝ proxySpace
 
-    :namespace qv
-        ##.(⎕io ⎕ml)←0 1
-    :endnamespace
+    ⍝:namespace qv
+    ⍝    ##.(⎕io ⎕ml)←0 1
+    ⍝:endnamespace
 
     :Class suicide
         ∇ inst←New data;whence
