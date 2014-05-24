@@ -24,10 +24,11 @@
  :OrIf 1∊'Local modifications found'⍷∊rev
      ⎕←'NB: SVN state is possibly not up-to-date - version information NOT added!'
      ⎕←⍪rev
- :Else
-     ver←version,'.',⊃⍕1+2⊃⎕VFI ver ⍝ Join base version and 1+SVN revision
-     isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
  :EndIf
+
+ ver←version,'.',⍕1+2⊃⎕VFI⍕ver ⍝ Join base version and 1+SVN revision
+ ⎕←'isolate.Version set to:'
+ ⎕←isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
 
  ⎕LX←'#.isolate.ynys.isoStart ⍬'
  ⎕←'      )WSID ',⎕WSID←path,'Distribution\isolate.dws'
