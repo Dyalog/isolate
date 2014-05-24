@@ -148,7 +148,7 @@
           z←proxy.⎕DF⊂(⍕caller),'.[isolate]'
           z←1(700⌶)¨proxy
           1:shape⍴proxy
-⍝ simulate isolate primitive: '¤'
+⍝ simulate isolate primitive: UCS 164 / sol
       }
 
       StartServer←{⍺←⊢
@@ -288,7 +288,10 @@
           :Case 0 ⋄ res←0(x b)
           :Case 1 ⋄ res←0((x b)c)
           :Case 2 ⋄ res←0(b(x c)d)
-          :Case 3 ⋄ res←0(c⊢b{x ⍺,'←⍵'}c)
+          :Case 3 ⍝ Assignment
+              :If (0=⍴⍴c)∧1=≡c ⋄ where.⎕FX c ⋄ res←0 c ⍝ c is ⎕OR
+              :Else ⋄ res←0(c⊢b{x ⍺,'←⍵'}c)
+              :EndIf
           :Case 4 ⋄ res←0(⍎'c⌷[d]where.',b)
           :Case 5 ⋄ res←0(⍎'(c⌷[d]where.',b,')←e')
           :EndSelect
@@ -678,8 +681,10 @@
       :If r=0
       :AndIf r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
           {}DRC.Close srv ⍝ Left over - object there but no thread
-          ⎕TKILL session.listeningtid
-          ⎕EX'session.listeningtid'
+          :If 2=⎕NC'session.listeningtid'
+              ⎕TKILL session.listeningtid
+              ⎕EX'session.listeningtid'
+          :EndIf
       :Else
      
           :If r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
@@ -691,6 +696,7 @@
           :EndIf
      
           :If ~r ⍝ Already got a listening server
+          :AndIf op.listen
               :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
                   session.listeningtid←1⊃z
               :ElseIf 10048=rc ⍝ Socket already in use
@@ -910,7 +916,7 @@
         (⎕IO ⎕ML)←0 1
 
           iEvaluate←{⍺←⊢
-              ⍝z←tracelog ⍵
+              ⍝ {(0=⍴⍴⍵)∧1=≡⍵}3⊃⍵,0:'SYNTAX ERROR: Function assignment not supported for isolates'iSpace.qsignal 2
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?

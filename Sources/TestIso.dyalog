@@ -26,7 +26,7 @@
       #.isolate.Reset 0 ⍝ Leave no trace
     ∇
 
-    ∇ z←Basic
+    ∇ z←Basic;time;delta
      ⍝ Take isolates for a little spin
      
       {}#.isolate.Config'listen' 0
@@ -35,15 +35,15 @@
       assert 2 4 6 8≡{⍵+⍵}#.IÏ⍳4
      
       time←3⊃⎕AI ⋄ z←⎕DL #.IÏ⍳4
-      assert 100>(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
+      assert 100>delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
       z←+/z                   ⍝ This should block
-      assert 4<(3⊃⎕AI)-time   ⍝ So now we should be >4s
+      assert 4<delta←(3⊃⎕AI)-time   ⍝ So now we should be >4s
      
 ⍝ Check that defined functions do not block...
       time←3⊃⎕AI ⋄ z←{⍵ ⍵}⎕DL #.IÏ 1
-      assert 100>(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
+      assert 100>delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
       z←+/z                   ⍝ This should block
-      assert 4<(3⊃⎕AI)-time   ⍝ So now we should me >4s
+      assert 4<delta←(3⊃⎕AI)-time   ⍝ So now we should me >4s
      
      
       z←'Basic Tests Completed'

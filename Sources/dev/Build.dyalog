@@ -11,15 +11,12 @@
      ⎕←'*** WARNING - Production builds should be run using Dyalog 14.0 ***'
  :EndIf
 
- 'isolate'⎕NS''
- 'isolate.ynys'⎕NS''
+ 'isolate'⎕NS'' ⋄ isolate.(⎕IO ⎕ML)←0 1
  BuildCovers
 
- ⎕←⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate.ynys -noname -nolink -disperse'
- 'RPCServer'isolate.⎕NS''
- ⎕←⎕SE.SALT.Load'⍵\Sources\RPCServer -target=isolate.RPCServer -nolink -disperse'
+ ⎕←⎕SE.SALT.Load'⍵\Sources\isolate.ynys.dyalog -target=isolate -source=no -nolink'
+ ⎕←⎕SE.SALT.Load'⍵\Sources\RPCServer -target=isolate -source=no -nolink'
  ⎕←⎕SE.SALT.Load'⍵\Sources\APLProcess -target=isolate -nolink'
- isolate.(⎕IO ynys.⎕IO ynys.proxySpace.⎕IO)←0
 
  :If 0=⍴rev←⎕CMD'subwcrev ',path
      ⎕←'NB: Unable to get SVN revision information!'
@@ -28,11 +25,8 @@
      ⎕←'NB: SVN state is possibly not up-to-date - version information NOT added!'
      ⎕←⍪rev
  :Else
-     ver←version,'.',⊃ver ⍝ Join base version and SVN revision
-     ⎕←2↓t←'⍝ isolate.ynys version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
-     t←t(':Field Public Shared Version←''',ver,'''')
-     src←{(1↑⍵),t,1↓⍵}⎕SRC isolate.ynys
-     ⎕FIX src
+     ver←version,'.',⊃⍕1+2⊃⎕VFI ver ⍝ Join base version and 1+SVN revision
+     isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
  :EndIf
 
  ⎕LX←'#.isolate.ynys.isoStart ⍬'
