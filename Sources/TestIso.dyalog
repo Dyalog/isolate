@@ -24,6 +24,7 @@
       ⎕←Errors
       ⎕←Callbacks
       #.isolate.Reset 0 ⍝ Leave no trace
+      ⎕←'Isolate tests completed'
     ∇
 
     ∇ z←Basic;time;delta

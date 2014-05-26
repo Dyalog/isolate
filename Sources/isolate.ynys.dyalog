@@ -17,7 +17,7 @@
           {1∊∊∘∊⍨⍵⊣⎕ML←0}addr ports:2⊃msg
           z←Config'status' 'client'
           z←Init''
-          ss←session.
+          ss←session
           id←(⍳≢ports)+1+0⌈⌈/⊣/ss.procs
           ss.procs⍪←id,0,(⊂addr),⍪ports
           1:1
@@ -92,7 +92,8 @@
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
      
           maxws←' -maxws=',⍕2 ⎕NQ'.' 'GetEnvironment' 'maxws'
-          ((ws rt)iso)←op.(workspace runtime)('-isolate=isolate -onerror=',(⍕op.onerror),maxws)
+          (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
+          iso←('-isolate=isolate -onerror=',(⍕op.onerror),maxws)
           ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
      
@@ -696,12 +697,15 @@
           :EndIf
      
           :If ~r ⍝ Already got a listening server
-          :AndIf op.listen
-              :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
-                  session.listeningtid←1⊃z
-              :ElseIf 10048=rc ⍝ Socket already in use
-                  ('Unable to create listener on port ',⍕session.homeport)⎕SIGNAL 11
-              :EndIf
+          :AndIf options.listen
+              :Repeat
+                  :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
+                      session.listeningtid←1⊃z
+                  :ElseIf 10048=rc ⍝ Socket already in use
+                      session.homeport+←op.(1+processes×processors)
+                  :EndIf
+              :Until r∨session.homeport>op.homeportmax
+              ('Unable to create listener: ',,⍕z)⎕SIGNAL r↓11
           :EndIf
       :EndIf
     ∇
@@ -852,6 +856,8 @@
               spaces.onerror←tod'S' 'signal' 'debug' 'return'
               spaces.processes←tod'I' 1                 ⍝ per processor
               spaces.processors←tod'I'(processors ⍬)    ⍝ no. processors (fn ignores ⍵)
+              spaces.homeport←tod'I' 7051               ⍝ first port to attempt to use
+              spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
               spaces.runtime←tod'B' 1                   ⍝ use runtime version
               ⍝ ⎕←'/// NB runtime set to 0'
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer

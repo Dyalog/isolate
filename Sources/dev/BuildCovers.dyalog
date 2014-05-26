@@ -13,11 +13,11 @@
      New←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.New⊢⍵ ⋄ ⍺(ynys.New)⍵}
      Reset←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Reset⊢⍵ ⋄ ⍺(ynys.Reset)⍵}
 
-     ll←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.ll⊢⍵ ⋄ ⍺(⍺⍺ ynys.ll)⍵}
-     llEach←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llEach⊢⍵ ⋄ ⍺(⍺⍺ ynys.llEach)⍵}
-     llKey←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llKey⊢⍵ ⋄ ⍺(⍺⍺ ynys.llKey)⍵}
-     llOuter←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llOuter⊢⍵ ⋄ ⍺(⍺⍺ ynys.llOuter)⍵}
-     llRank←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llRank ⍵⍵⊢⍵ ⋄ ⍺(⍺⍺ ynys.llRank ⍵⍵)⍵}
+     ⍝ll←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.ll⊢⍵ ⋄ ⍺(⍺⍺ ynys.ll)⍵}
+     ⍝llEach←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llEach⊢⍵ ⋄ ⍺(⍺⍺ ynys.llEach)⍵}
+     ⍝llKey←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llKey⊢⍵ ⋄ ⍺(⍺⍺ ynys.llKey)⍵}
+     ⍝llOuter←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llOuter⊢⍵ ⋄ ⍺(⍺⍺ ynys.llOuter)⍵}
+     ⍝llRank←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llRank ⍵⍵⊢⍵ ⋄ ⍺(⍺⍺ ynys.llRank ⍵⍵)⍵}
 
      AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.AddServer⊢⍵ ⋄ ⍺(ynys.AddServer)⍵}
      StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(ynys.StartServer)⍵}
