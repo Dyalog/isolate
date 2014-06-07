@@ -38,7 +38,8 @@
       ⎕←'      ... done ...'
     ∇
 
-    ∇ freq←{nprocs}Report state;pages;html;iss;cap;PF
+    ∇ freq←{nprocs}Report state;pages;html;iss;cap;PF;AI3
+      AI3←⎕AI[3]
       :If 0=⎕NC'nprocs' ⋄ nprocs←#.isolate.Config'processors' ⋄ :EndIf ⍝ Default to use all processors
      
       ⎕EX'bars'           ⍝ make sure we don't have this global
@@ -56,6 +57,9 @@
       freq←⊃⍪/freq
       freq←¯1+(alphabet,freq[;1]){+/⍵}⌸(1⍴⍨≢alphabet),freq[;2]
       freq←alphabet,⍪freq
+      freq←freq[⍒freq[;2];]
+     
+      ⎕←'Elapsed seconds: ',1⍕⎕AI[3]-AI3
     ∇
 
     ∇ r←ProgressUpdate arg
@@ -136,7 +140,12 @@
      
       ⍝ ↓↓↓ This is not in the original CONGA sample
       :If 0∊m←#.⎕NC z←'HTTPUtils' 'DRC'
-          (↑(m=0)/z)#.⎕CY'conga'
+          :Trap 11
+              (↑(m=0)/z)#.⎕CY'conga'
+          :Else
+              (↑(m=0)/z)#.⎕CY'ws\conga'
+          :EndTrap
+     
       :EndIf
      
       (U DRC)←#.(HTTPUtils DRC) ⍝ Uses utils from here

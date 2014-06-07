@@ -117,18 +117,26 @@
       z←'Syntax Tests Completed'
     ∇
 
-    ∇ z←Errors;is;result
+    ∇ z←Errors;is;result;x
      ⍝ More advanced error handling
      
       {}#.isolate.Config'listen' 1
+      {}#.isolate.Config'runtime' 0
       {}#.isolate.Config'onerror' 'signal'
       {}#.isolate.Reset 0
      
-      assert 5=≢result←{1 2 3÷⍵}#.IÏ 1 2(3 4)(5 6)0
-      assert(2⊃result)≡0.5 1 1.5
-      5 'LENGTH ERROR' '{1 2 3÷⍵}'expect'3⊃result'
-      5 'LENGTH ERROR' '{1 2 3÷⍵}'expect'4⊃result'
-      11 'DOMAIN ERROR' '{1 2 3÷⍵}'expect'5⊃result'
+      assert 5=≢result←{z←⎕DL⊃⍵ ⋄ 1 2 3÷⍵}#.IÏ 1 2(3 4)(5 6)0
+      ⎕DL 4
+      x←4 5⍴#.isolate.(Values,Available,Failed,Running)'result'
+      assert((1 2 3)(0.5 1 1.5)⎕NULL ⎕NULL ⎕NULL)≡x[1;] ⍝ Values
+      assert 1 1 0 0 0≡x[2;] ⍝ Available
+      assert 0 0 1 0 1≡x[3;] ⍝ Failed
+      assert 0 0 0 1 0≡x[4;] ⍝ Still running
+     
+      :Repeat ⋄ ⎕DL 0.1 ⋄ :Until ~∨/#.isolate.Running'result'
+      5 'LENGTH ERROR' '{z←⎕DL⊃⍵ ⋄ 1 2 3÷⍵}'expect'3⊃result'
+      5 'LENGTH ERROR' '{z←⎕DL⊃⍵ ⋄ 1 2 3÷⍵}'expect'4⊃result'
+      11 'DOMAIN ERROR' '{z←⎕DL⊃⍵ ⋄ 1 2 3÷⍵}'expect'5⊃result'
      
       is←#.ø''
       ⎕EX'NNNN'

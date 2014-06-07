@@ -6,9 +6,6 @@
     tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵}
     ⍝tracelog←{}        ⍝ uncomment this line to disable all logging
 
-    retry_limit←20      ⍝ How many retries
-    retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
-
       AddServer←{⍺←⊢
           msg←messages'⍝- '
           'server'≡Config'status':0⊃msg
@@ -32,11 +29,11 @@
       count←0
       :While 0≠⊃r←DRC.Clt args ⍝ Cannot connect
           :If 1111=⊃r
-              {}⎕DL retry_interval×count+←1 ⍝ longer wait each time
+              {}⎕DL session.retry_interval×count+←1 ⍝ longer wait each time
           :Else
               ('Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
           :EndIf
-      :Until count≥retry_limit
+      :Until count≥session.retry_limit
     ∇
 
       Config←{⍺←⊢
@@ -55,10 +52,10 @@
 ⍝           ⍵:name          : value
 ⍝           ⍵:name value    : old value having set new in param
       }
-      
+
     ∇ checkLocalServer w;z
       ⍝ take opportunity to check listener is up
-      :If session.listen
+      :If options.listen
           :If 2≠⎕NC'session.listeningtid'
           :OrIf session.listeningtid(~∊)⎕TNUMS
               ⎕←'ISOLATE: Callback server restarted'
@@ -82,11 +79,13 @@
           trapErr''::signal''
           ##.DRC←here.DRC←getDRC op.drc
           z←DRC.Init ⍬
-          here.(signal←⎕SIGNAL/∘{(0⊃⎕DMX.DM)⎕DMX.EN})
+⍝          here.(signal←⎕SIGNAL/∘{(0⊃⎕DMX.DM)⎕DMX.EN})
+          here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
+          ss.retry_limit←20      ⍝ How many retries
+          ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
           ss.orig←whoami''
           ss.homeport←7051
           ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
-          ss.errors←0⍴,⊂0 0('' '')          ⍝ ⎕EN ⎕DM for latest group
           ss.nextid←2⊃⎕AI                   ⍝ isolate id
           ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
@@ -103,8 +102,7 @@
           pclts←pids{0≠⊃z←DRCClt('PROC',⍕⍺)ss.orig ⍵:'' ⋄ 1⊃z}¨ports
           0∊≢¨pclts:'UNABLE TO CONNECT TO NEW PROCESSES'⎕SIGNAL 6
           ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
-          ss.assoc←dix'proc iso busy seq'(4⍴⍬ ⍬)
-          ss.assoc.(group←{seq⊃⍨iso⍳⍵})           ⍝ ephemeral group id
+          ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
      
           ss.started←sessionStart''               ⍝ last thing so we know
           1:⊢1                                    ⍝ 1 - newly started
@@ -118,20 +116,20 @@
           {⍵.({⍵,⍪⍎⍕⍵}↓⎕NL 2)}⍣('namespace'≢minuscule ⍵)⊢session.assoc
 ⍝
       }
-      
+
     ∇ r←{default}Values name
       :If 0=⎕NC'default' ⋄ default←⊢ ⋄ :EndIf
       r←⊃default(1⊃⎕RSI).(702⌶)name
     ∇
-      
+
     ∇ r←Failed name
       r←(1⊃(1⊃⎕RSI).(702⌶)name)∊2 3
     ∇
-          
+
     ∇ r←Running name;complete;failed
       r←0=1⊃(1⊃⎕RSI).(702⌶)name
     ∇
-      
+
     ∇ r←Available name
       r←(1⊃(1⊃⎕RSI).(702⌶)name)∊4 5
     ∇
@@ -139,16 +137,14 @@
       New←{⍺←⊢
           z←Init 0
           trapErr''::signal''
-          shape←⍺⊣⍬ ⍝ number of isolates (shape of array) - default ⍬ (scalar)
           caller←callerSpace''
           source←caller argType ⍵
-          ids←shape isolates source
-          proxy←1/caller.⎕NS¨shape⍴proxyClone  ⍝ 1/ ensure non-scalar iso array.
-          proxy.iSpace←iSpace
-          proxy.(iD iCarus)←{⍵,suicide.New'cleanup'⍵}¨ids
-          z←proxy.⎕DF⊂(⍕caller),'.[isolate]'
-          z←1(700⌶)¨proxy
-          1:shape⍴proxy
+          id←⍬ isolates source
+          proxy←caller.⎕NS proxyClone
+          proxy.(iSpace iD iCarus)←iSpace id,suicide.New'cleanup'id
+          z←proxy.⎕DF(⍕caller),'.[isolate]'
+          z←1(700⌶)proxy
+          1:proxy
 ⍝ simulate isolate primitive: UCS 164 / sol
       }
 
@@ -172,7 +168,7 @@
 ⍝- -⎕IO-⍳
 ⍝- )
       }
-      
+
     ∇ x qsignal y
       ⍝ To help signal an error that will not terminate a dfn capsule
       y←(y 86)[y>999] ⍝ Use 86 for interrupts and CONGA ERRORS
@@ -233,7 +229,6 @@
       →(3≠⍴t←1⊃r)⍴0     ⍝ Not a ⎕DM
       (msg line caret)←t
       msg←('⍎'=⊃msg)↓msg
-      ⍝ ⎕TRAP←0 'S' ⋄ ∘
       :If 'f[] f←'≡6↑line ⋄ (line caret)←6↓¨line caret
       :ElseIf 'decode['≡7↑line
           :If ∨/':Case'⍷line ⋄ line←caret←''
@@ -251,7 +246,7 @@
           (chrid port numid)←⍵.(chrid port numid)
           ⎕←⍪'.'/⍨options.debug
           (ns←⎕NS proxyClone).(iD iSpace)←⍵ iSpace    ⍝ recreate temp proxy
-          rem←{session.assoc.(iso proc busy seq⌿⍨←⊂iso≠⍵)}
+          rem←{session.assoc.(iso proc busy⌿⍨←⊂iso≠⍵)}
           11::rem numid                               ⍝ DRC reported errors
           z←ns.iSend{⍵(1('{#.⎕EX''',⍵,'''}')0)}chrid  ⍝ expunge remote namespace
           z←DRC.Close chrid
@@ -281,7 +276,7 @@
           ⊢2 ⎕NQ'.' 'DateToIDN'⍵
       }
 
-    ∇ res←where decode(a b c d e);home;x
+    ∇ res←where decode(a b c d e);home;x;DMX
       home←where=#  ⍝ would be #.IsoNNNNN for outward call
       x←where.⍎
       :Trap 999×{0::0 ⋄ ##.onerror≡⍵}'debug'
@@ -297,7 +292,13 @@
           :Case 5 ⋄ res←0(⍎'(c⌷[d]where.',b,')←e')
           :EndSelect
       :Else
-          res←⎕DMX.(EN DM)
+          :If ⎕DMX.(EN ENX)≡11 4 ⍝ DOMAIN ERROR: isolate function iSyntax does not exist ...
+              res←11((⊂'ISOLATE ERROR: Callbacks not enabled'),1↓⎕DM)
+          :ElseIf ⎕DMX.((EN=6)∧∨/'##'⍷,⍕DM)
+              ⎕TRAP←0 'S' ⋄ DMX←⎕DMX ⋄ ∘
+          :Else
+              res←⎕DMX.(EN DM)
+          :EndIf
       :EndTrap
 ⍝ ⍺ target space
 ⍝ ⍵ encoded list
@@ -333,16 +334,6 @@
 ⍝       sec ← (⊢⊣)/∘⍳∘(15E5∘×)
 ⍝       sec derv 0
 ⍝ ((((⊢⊣)/)∘⍳)∘( 1500000 ∘×))
-      }
-
-      distrib←{⍺←⊢
-          rd←{⊃(⌊0.5+⍵×⍺÷+/⍵){⍺⍺+⍵{(×⍵)×(⍳⍴⍺)∊(⍒|⍺)⍴⍨|⍵}⍺-+/⍺⍺}/⍺ ⍵}
-          x←⍺-m←⍺⌊+/z←(⌈/-⊢)⍵
-          (x rd 1⊣¨⍵)+m rd z
-⍝ distribute
-⍝ ⍺ scalar number to be allocated
-⍝ ⍵ current allocation per bucket
-⍝ ← allocation of new - shape = ⍴⍵ ; sum = ⍺
       }
 
       dix←{⍺←⊢
@@ -503,7 +494,7 @@
           s b i r←'SBIR'=type
           msg←nam,' should be a',⍕s b i r/'string' 'boolean' 'integer' 'ref'
           ok←b and(⊢≡1=⊢)new
-          ok←ok∨i and(0≡∊)and(⊢=⌊)new
+          ok←ok∨i and{0=1↑0⍴⍵}and(⊢=⌊)new
           ok←ok∨s and{''≡0⍴⍵}new
           ok←ok∨r and{9=⎕NC'⍵'}new
           ~ok:sig11 msg
@@ -524,18 +515,6 @@
 ⍝   (⍵:name) value
 ⍝   (⍵:name value) value re-assigned
 ⍝ called by both Config and setDefaults
-      }
-
-      isoGroup←{⍺←⊢
-          ≥/0 1∊{9∊⎕NC'⍵'}¨iso←,⍵:
-          0∊was←0(700⌶)¨iso:{}was(700⌶)¨iso
-          z←1(700⌶)¨iso⊣ids←iso.iD.numid
-          (session.nextid grp)←2+session.nextid
-          ⊢ids session.assoc.{((iso∊⍺)/seq)←⍵}grp
-     
-⍝ ⍵ array of isolates
-⍝   group all in new unique group
-⍝ ← group id
       }
 
       isoStart←{⍺←⊢
@@ -562,26 +541,28 @@
 
       isolates←{⍺←⊢
           ss←session
-          num←×/shape←⍺     ⍝ new isos required
-          source←⊂⍵         ⍝ no-op if ns else enclose wsid
-          receive←⊂(⍕⎕THIS),'.receive'
-          numid←(-2×⍳num)+ss.nextid←ss.nextid+2×num
-⍝            2× ↑ as alternates used to call back to orig
-          tgt←'#.'∘,¨chrid←('Iso',⍕)¨numid
+          source←⍵                    ⍝ ns or wsid
+          receive←(⍕⎕THIS),'.receive'
+          numid←ss.nextid←ss.nextid+2
+          tgt←'#.',chrid←'Iso',⍕numid
      
 ⍝ ss.procs contains all proc ids; assoc.(busy/proc) only those with busy isos
+          max←options.isolates
+          ass←ss.assoc
           z←⎕TGET ss.assockey         ⍝ see Init
-          procs←{(num distrib ¯1+⊢/⍵)⌿⊣/⍵},∘≢⌸(⊣/ss.procs),ss.assoc.(busy/proc)
-          ss.assoc.(iso proc busy seq),←num⍴¨numid procs 1(⌊/numid)
-          z←⎕TPUT ss.assockey         ⍝ ↑ all have same "seq" see "group←{" in Init
-     
-          (host port)←↓⍉{⍵[⍵[;0]⍳procs;2 3]}ss.procs
-          data←↓host,(⊂ss.orig),chrid,numid,tgt,ss.homeport,⍪port
-          ids←{dix'host orig chrid numid tgt home port'⍵}¨data
-          z←connect¨↓chrid,host,port,⍪↓receive,⍪↓source,ss.listen,⍪ids
-          shape⍴ids
-⍝ Create DRC client for each isolate.
-⍝ Create id spaces to send and return for corresponding proxies.
+          procs←⊣/ss.procs
+          ok←options.isolates>use←+/procs∘.=ass.(busy/proc)
+          ~∨/ok:'ISOLATE ERROR: All processes are in use'⎕SIGNAL 11⊣⎕TPUT ss.assockey
+          proc←procs⊃⍨use⍳⌊/use
+          ass.(iso busy proc),←numid 1,proc
+          z←⎕TPUT ss.assockey
+          (host port)←ss.procs[procs⍳proc;2 3]
+          data←host ss.orig chrid numid tgt ss.homeport port
+          id←dix'host orig chrid numid tgt home port'data
+          z←connect chrid host port,⊂receive(source ss.listen id)
+          id
+⍝ Create DRC client for isolate.
+⍝ Create id space to send and return for corresponding proxy.
       }
 
       ll←{⍺←⊢
@@ -605,9 +586,9 @@
           trapErr''::signal''
           n←⍺⍺ fnSpace'f'
           s←⍴⍺⊢¨⍵
-          i←1/s New n    ⍝ non-scalar
-          ⍵≡⍺ ⍵:s⍴i.f ⍵  ⍝ monad
-          s⍴⍺ i.f ⍵      ⍝ dyad
+          i←New¨s⍴n
+          ⍵≡⍺ ⍵:i.f ⍵    ⍝ monad
+          ⍺ i.f ⍵        ⍝ dyad
      
 ⍝ parallel each
 ⍝ ⍺     [larg]
@@ -679,6 +660,7 @@
 
     ∇ r←localServer r;srv;rc;z
       →(0=⎕NC'session.homeport')⍴0
+     
       :If r=0
       :AndIf r←DRC.Exists srv←'ISO',⍕session.homeport ⍝ Server exists
           {}DRC.Close srv ⍝ Left over - object there but no thread
@@ -702,9 +684,9 @@
                   :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
                       session.listeningtid←1⊃z
                   :ElseIf 10048=rc ⍝ Socket already in use
-                      session.homeport+←op.(1+processes×processors)
+                      session.homeport+←options.(1+processes×processors)
                   :EndIf
-              :Until r∨session.homeport>op.homeportmax
+              :Until r∨session.homeport>options.homeportmax
               ('Unable to create listener: ',,⍕z)⎕SIGNAL r↓11
           :EndIf
       :EndIf
@@ -816,8 +798,8 @@
      
           count←0
           :While ~ok←∧/session.procs[;1].HasExited
-              ⎕DL retry_interval×count←count+1
-          :Until count>retry_limit
+              ⎕DL session.retry_interval×count←count+1
+          :Until count>session.retry_limit
           r←r,(~ok)/' (service processes have not died)'
      
           :If 2=⎕NC'session.listeningtid'
@@ -854,8 +836,9 @@
               spaces.listen←tod'B' 0                    ⍝ can isolate call back to ws
               ⍝ ⎕←'/// NB listen set to 1'
               spaces.onerror←tod'S' 'signal' 'debug' 'return'
-              spaces.processes←tod'I' 1                 ⍝ per processor
               spaces.processors←tod'I'(processors ⍬)    ⍝ no. processors (fn ignores ⍵)
+              spaces.processes←tod'I' 1                 ⍝ per processor
+              spaces.isolates←tod'I' 99                 ⍝ per process
               spaces.homeport←tod'I' 7051               ⍝ first port to attempt to use
               spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
               spaces.runtime←tod'B' 1                   ⍝ use runtime version
@@ -922,14 +905,13 @@
         (⎕IO ⎕ML)←0 1
 
           iEvaluate←{⍺←⊢
-              ⍝ {(0=⍴⍴⍵)∧1=≡⍵}3⊃⍵,0:'SYNTAX ERROR: Function assignment not supported for isolates'iSpace.qsignal 2
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
               z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
-              (rc res)←z←iSend iD.tgt data       ⍝ the biz
+              (rc res)←z←iSend iD.tgt data      ⍝ the biz
               ok←0=rc
-              ~home:{rc=0:⍵ ⋄ ⍎'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
+              ~home:{rc=0:⍵ ⋄ ⍎⎕←'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
               ok:⊢res                           ⍝ spiffing!
               ((⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res)iSpace.qsignal rc
@@ -989,10 +971,6 @@
           }
 
     :endnamespace ⍝ proxySpace
-
-    ⍝:namespace qv
-    ⍝    ##.(⎕io ⎕ml)←0 1
-    ⍝:endnamespace
 
     :Class suicide
         ∇ inst←New data;whence
