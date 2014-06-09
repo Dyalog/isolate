@@ -121,7 +121,6 @@
      ⍝ More advanced error handling
      
       {}#.isolate.Config'listen' 1
-      {}#.isolate.Config'runtime' 0
       {}#.isolate.Config'onerror' 'signal'
       {}#.isolate.Reset 0
      

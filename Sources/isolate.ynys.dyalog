@@ -79,28 +79,26 @@
           trapErr''::signal''
           ##.DRC←here.DRC←getDRC op.drc
           z←DRC.Init ⍬
-⍝          here.(signal←⎕SIGNAL/∘{(0⊃⎕DMX.DM)⎕DMX.EN})
           here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
           ss.retry_limit←20      ⍝ How many retries
           ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
           ss.orig←whoami''
           ss.homeport←7051
-          ss.listen←localServer op.listen   ⍝ ⌽⊖'ISOL'
+          ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
           ss.nextid←2⊃⎕AI                   ⍝ isolate id
           ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
      
-          maxws←' -maxws=',⍕2 ⎕NQ'.' 'GetEnvironment' 'maxws'
+          maxws←' -maxws=',⍕options.maxws
           (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
-          iso←('-isolate=isolate -onerror=',(⍕op.onerror),maxws)
+          iso←('-isolate=isolate -onerror=',(⍕op.onerror),' -isoid=',(⍕ss.callback),maxws)
           ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
      
           procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
           pids←(1⊃⎕AI)+⍳⍴procs
           procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
-          pclts←pids{0≠⊃z←DRCClt('PROC',⍕⍺)ss.orig ⍵:'' ⋄ 1⊃z}¨ports
-          0∊≢¨pclts:'UNABLE TO CONNECT TO NEW PROCESSES'⎕SIGNAL 6
+          pclts←pids(ss InitConnection)¨ports
           ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
           ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
      
@@ -110,6 +108,24 @@
 ⍝ ⍵ ?
 ⍝ ← 1 | 0 - 1=started, 0=already
       }
+      
+    ∇ r←pid(ss InitConnection)port;z
+      :If 0≠⊃z←DRCClt('PROC',⍕pid)ss.orig port
+          ('ISOLATE: Unable to connect to new process:',,⍕z)⎕SIGNAL 11
+      :Else ⍝ Connection made
+          r←1⊃z
+          :If 0=⊃z←DRC.Send r('#.isolate.ynys.execute'('' 'identify'))
+              :If 0=⊃z←DRC.Wait r 60000
+              :AndIf 'Progress'≡2⊃z ⋄ z←DRC.Wait r 60000
+              :EndIf
+          :AndIf 0 'Receive'≡z[0 2]
+          :AndIf ss.callback=3 1 1⊃z
+          :Else
+              ⎕←z
+              ('ISOLATE: New process did not respond to handshake:',,⍕z)⎕SIGNAL 11
+          :EndIf
+      :EndIf
+    ∇
 
       InternalState←{⍺←⊢
           newSession'':⍳0 0
@@ -295,7 +311,7 @@
           :If ⎕DMX.(EN ENX)≡11 4 ⍝ DOMAIN ERROR: isolate function iSyntax does not exist ...
               res←11((⊂'ISOLATE ERROR: Callbacks not enabled'),1↓⎕DM)
           :ElseIf ⎕DMX.((EN=6)∧∨/'##'⍷,⍕DM)
-              ⎕TRAP←0 'S' ⋄ DMX←⎕DMX ⋄ ∘
+              res←6((⊂'VALUE ERROR IN CALLBACK'),1↓⎕DM)
           :Else
               res←⎕DMX.(EN DM)
           :EndIf
@@ -375,26 +391,35 @@
 ⍝   creates list that encodes syntax and includes arguments
       }
 
-    ∇ r←execute(name data);z;n;⎕TRAP
-      space←#.⍎name
-      :Hold 'ISO_',name
-          :If {0::0 ⋄ ##.onerror≡⍵}'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
-          r←space decode 5↑data
+    ∇ r←execute(name data);z;n;space
+      :If name≡''
+          :Select data
+          :Case 'identify' ⍝ return isoid
+              r←0(⊃1⊃⎕VFI+2 ⎕NQ'.' 'GetEnvironment' 'isoid')
+          :Else
+              r←11('ISOLATE: Unknown command'data)
+          :EndSelect
+      :Else
+          space←#.⍎name
+          :Hold 'ISO_',name
+              :If {0::0 ⋄ ##.onerror≡⍵}'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
+              r←space decode 5↑data
      
-          :If 0=⎕NC'session' ⍝ In the isolate
-              :Trap 6
-                  z←+r ⍝ Block on futures here to provoke (and trap) the VALUE ERROR
-              :Else
-                  :If 2=⎕NC n←name,'error'
-                      r←⍎n ⋄ ⎕EX n
-                      (1 0⊃r),←' IN CALLBACK'
+              :If 0=⎕NC'session' ⍝ In the isolate
+                  :Trap 6
+                      z←+r ⍝ Block on futures here to provoke (and trap) the VALUE ERROR
                   :Else
-                      r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
-                  :EndIf
-              :EndTrap
-          :EndIf
-          r←cleanDM r
-      :EndHold
+                      :If 2=⎕NC n←name,'error'
+                          r←⍎n ⋄ ⎕EX n
+                          (1 0⊃r),←' IN CALLBACK'
+                      :Else
+                          r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
+                      :EndIf
+                  :EndTrap
+              :EndIf
+              r←cleanDM r
+          :EndHold
+      :EndIf
 ⍝ this is the function called by RPCServer.Process
 ⍝ ⍵     name data
 ⍝ data  list created by encode below.
@@ -781,7 +806,7 @@
           z←iso.{6::0 ⋄ z←{}(↑'⎕io' '⎕ml')⎕CY ⍵}⍣(≡source)⊢source
           z←name{#.⍎⍺,'←⍵'}iso                           ⍝ name it in root
           z←#.DRC.Clt⍣listen⊢id.(chrid orig port)        ⍝ orig=host if local
-          1⊣1(700⌶)root                                  ⍝ DOMAIN ERROR if no iSyntax
+          1⊣1(700⌶)root                                  ⍝ Make isolate
       }
 
     ∇ r←Reset mode;iso;clt;ok
@@ -842,7 +867,7 @@
               spaces.homeport←tod'I' 7051               ⍝ first port to attempt to use
               spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
               spaces.runtime←tod'B' 1                   ⍝ use runtime version
-              ⍝ ⎕←'/// NB runtime set to 0'
+              spaces.maxws←tod'S'(2 ⎕NQ'.' 'GetEnvironment' 'maxws')
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
