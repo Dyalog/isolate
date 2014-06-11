@@ -1,7 +1,8 @@
 ﻿:Namespace TestIso
 
     (⎕IO ⎕ML)←1 1
-    assert←{'Assertion failed'⎕SIGNAL(⍵=0)/11}
+    assert←{'Assertion failed'⎕SIGNAL(⍵=0)/11} 
+    runtime←1
     
     ∇ msgs expect expr;z;got
     ⍝ Check that the expected error was received
@@ -10,7 +11,7 @@
           'DID NOT FAIL'⎕SIGNAL 11
       :Else         ⍝ We are expecting a VALUE ERROR
           got←⎕DMX.Message
-          :If ((∊⍕¨msgs)~':: ')≢got~': '
+          :If ((∊⍕¨msgs)~': '){⍺≢(⍴⍺)↑⍵}got~': '
               'expected' 'got'⍪⍉⍪msgs got
               ∘
               ⎕SIGNAL something
@@ -18,13 +19,26 @@
       :EndTrap
     ∇
 
-    ∇ z←All
-      ⎕←Basic
-      ⎕←Syntax
-      ⎕←Errors
-      ⎕←Callbacks
-      #.isolate.Reset 0 ⍝ Leave no trace
-      ⎕←'Isolate tests completed'
+    ∇ z←All n;c;slow
+      c←0
+      slow←⍬
+      ⎕←'runtime'runtime
+     
+      :While c<n
+          c←c+1
+          ⎕←''
+          ⎕←'Isolate test run #',⍕c
+          {}#.isolate.Config'runtime'runtime
+          ⎕←Basic
+          ⎕←Syntax
+          ⎕←Errors
+          ⎕←Callbacks
+          #.isolate.Reset 0 ⍝ Leave no trace
+      :EndWhile
+      ⎕←(⍕n),' isolate tests completed'
+      :If 0≠≢slow
+          ⎕←'NB: ',(⍕≢slow),' slow starts - in ms: ',⍕slow[⍒slow]
+      :EndIf
     ∇
 
     ∇ z←Basic;time;delta
@@ -36,7 +50,10 @@
       assert 2 4 6 8≡{⍵+⍵}#.IÏ⍳4
      
       time←3⊃⎕AI ⋄ z←⎕DL #.IÏ⍳4
-      assert 100>delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
+      :If 100<delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
+          slow,←delta
+          ⎕←'*** WARNING: First set of futures took ',(⍕delta),' ms to materialise.'
+      :EndIf
       z←+/z                   ⍝ This should block
       assert 4<delta←(3⊃⎕AI)-time   ⍝ So now we should be >4s
      
@@ -142,7 +159,7 @@
       :Trap 11 ⋄ assert ⎕NULL≡is.##.NNNN ⍝ This should DOMAIN ERROR
       :EndTrap
      
-      6 'VALUE ERROR IN CALLBACK' 'NNNN'expect'is.(##.NNNN)'
+      6 'VALUE ERROR IN CALLBACK'expect'is.(##.NNNN)'
      
       NNNN←42
       assert 42=is.(##.TestIso.NNNN) ⍝ This should work

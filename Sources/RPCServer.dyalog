@@ -1,5 +1,6 @@
 ﻿:Namespace RPCServer
     (⎕IO ⎕ML)←1 1
+    SendProgress←0
 
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
@@ -67,13 +68,19 @@
     ∇ Process(obj data);r
       ⍝ Process a call. data[1] contains function name, data[2] an argument
      
-      {}##.DRC.Progress obj('    Thread ',(⍕⎕TID),' started to run: ',,⍕data) ⍝ Send progress report
+      :If SendProgress
+          {}##.DRC.Progress obj('    Thread ',(⍕⎕TID),' started to run: ',,⍕data) ⍝ Send progress report
+      :EndIf
      
       :Trap 0 ⋄ r←0((⍎1⊃data)(2⊃data))
       :Else ⋄ r←⎕EN ⎕DM
       :EndTrap
      
-      {}##.DRC.Respond obj r
+      :Trap 11
+          {}##.DRC.Respond obj r
+      :Else
+          {}##.DRC.Respond obj(99999('Unable to return result: ',⎕DMX.Message))
+      :EndTrap
     ∇
 
     ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid

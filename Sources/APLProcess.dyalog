@@ -234,7 +234,7 @@
     ∇ r←HasExited
       :Access public instance
       :If IsWin
-          r←Proc.HasExited
+          r←{0::⍵ ⋄ Proc.HasExited}1
       :Else
           :If ~r←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
               r∨←∨/'<defunct>'⍷⊃,/res

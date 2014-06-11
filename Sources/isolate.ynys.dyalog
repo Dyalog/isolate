@@ -26,12 +26,13 @@
     ∇ r←DRCClt args;count
       ⍝ Create a DRC Client, looping a bit
      
+      {}DRC.Close⊃args ⍝ Paranoia, the bug is somewhere else, sorry!
       count←0
       :While 0≠⊃r←DRC.Clt args ⍝ Cannot connect
           :If 1111=⊃r
               {}⎕DL session.retry_interval×count+←1 ⍝ longer wait each time
           :Else
-              ('Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
+              ('ISOLATE: Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
           :EndIf
       :Until count≥session.retry_limit
     ∇
@@ -94,11 +95,10 @@
           iso←('-isolate=isolate -onerror=',(⍕op.onerror),' -isoid=',(⍕ss.callback),maxws)
           ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
+          pids←(1⊃⎕AI)+⍳⍴ports
      
-          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
-          pids←(1⊃⎕AI)+⍳⍴procs
-          procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
-          pclts←pids(ss InitConnection)¨ports
+          pclts←InitConnections
+     
           ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
           ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
      
@@ -108,23 +108,54 @@
 ⍝ ⍵ ?
 ⍝ ← 1 | 0 - 1=started, 0=already
       }
-      
-    ∇ r←pid(ss InitConnection)port;z
+
+
+    ∇ r←InitConnections;z;i;count;limit;ok;⎕TRAP
+      ⎕TRAP←0 'S'
+      (count limit)←0 3
+     
+      :Repeat
+          count+←1
+          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
+          procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
+     
+          r←(≢pids)⍴⊂''
+          :For i :In ⍳≢pids
+              :Trap 0
+                  (i⊃r)←(i⊃pids)(ss InitConnection)i⊃ports
+              :Else
+                  (i⊃r)←''
+              :EndTrap
+          :EndFor
+     
+          :If ~ok←~∨/0∊≢¨r ⍝ at least one failed
+              ⎕←'ISOLATE: Unable to connect to started processes (attempt ',(⍕count),' of ',(⍕limit),')'
+              ⎕DL 5 ⋄ {}procs.Kill ⋄ ⎕DL 5
+              ports+←1+op.(processors×processes)
+          :EndIf
+      :Until ok∨count>limit
+      'ISOLATE: Unable to initialise isolate processes'⎕SIGNAL ok↓11
+    ∇
+
+    ∇ r←pid(ss InitConnection)port;z;ok
+      ok←0
       :If 0≠⊃z←DRCClt('PROC',⍕pid)ss.orig port
           ('ISOLATE: Unable to connect to new process:',,⍕z)⎕SIGNAL 11
       :Else ⍝ Connection made
           r←1⊃z
           :If 0=⊃z←DRC.Send r('#.isolate.ynys.execute'('' 'identify'))
-              :If 0=⊃z←DRC.Wait r 60000
-              :AndIf 'Progress'≡2⊃z ⋄ z←DRC.Wait r 60000
+          :AndIf 0=⊃z←DRC.Wait r 20000
+              :If 0 'Receive'≡z[0 2]
+                  :If ~ok←ss.callback=3 1 1⊃z
+                      r←'' ⍝ We got hold of someone elses server, don't use it
+                  :EndIf
               :EndIf
-          :AndIf 0 'Receive'≡z[0 2]
-          :AndIf ss.callback=3 1 1⊃z
           :Else
-              ⎕←z
+              {}DRC.Close r
               ('ISOLATE: New process did not respond to handshake:',,⍕z)⎕SIGNAL 11
           :EndIf
       :EndIf
+      :If ~ok ⋄ {}DRC.Close r ⋄ :EndIf
     ∇
 
       InternalState←{⍺←⊢
@@ -169,14 +200,17 @@
           ~newSession'':(0⊃msg),' ',options.status
           z←Config'status' 'server'
           z←Init''
-          address ports←(session.orig)(∪⊢/session.procs)
-          info←(1 2⊃¨⊂msg),⍪address ports
-          res←⊃,/⍕¨,(4 5 6 7⊃¨⊂msg),⍪address(⊃ports)(⍴ports)''
+          address←3↑⍤1↑1⊃DRC.GetProp'.' 'lookup' '' 80
+          address[;1]←¯3↓¨address[;1]
+          address←address[⍋↑address[;2];0 1]
+          ports←∪session.procs[;3]
+          ⎕←info←(1 2⊃¨⊂msg),⍪address ports
+          res←⊃,/⍕¨,(4 5 6 7⊃¨⊂msg),⍪'[address]'(⊃ports)(⍴ports)''
           ⎕←⍪,' ',⍪info(3⊃msg)res
           1:''
      
 ⍝- Session already started as
-⍝- IP Address:
+⍝- Machine Name:
 ⍝- IP Ports:
 ⍝- Enter the following in another session, in one or more other machines:
 ⍝-       #.isolate.AddServer '
@@ -276,10 +310,12 @@
       }
 
     ∇ r←connect(chrid host port data);count
-      :If 0=⊃r←DRCClt chrid host port ⍝ DRCClt will retry
-      :AndIf 0=⊃r←DRC.Send chrid data       ⍝ on any
-      :AndIf 0=⊃r←DRC.Wait 1⊃r              ⍝ error
-      :Else ⋄ {}DRC.Close chrid
+      :If 0=⊃r←DRCClt chrid host port  ⍝ DRCClt will retry
+      :AndIf 0=⊃r←DRC.Send chrid data  ⍝ on any
+      :AndIf 0=⊃r←DRC.Wait(1⊃r)20000 ⍝ error
+      :Else
+          {}DRC.Close chrid
+          ('ISOLATE: Connection failed: ',,⍕r)qsignal 6
       :EndIf
 ⍝ connect and send Initial payload
 ⍝ ⍺     attempts
@@ -391,7 +427,7 @@
 ⍝   creates list that encodes syntax and includes arguments
       }
 
-    ∇ r←execute(name data);z;n;space
+    ∇ r←execute(name data);z;n;space;zz
       :If name≡''
           :Select data
           :Case 'identify' ⍝ return isoid
@@ -416,6 +452,10 @@
                           r←6('VALUE ERROR: Callback failed'(1⊃data)'^')
                       :EndIf
                   :EndTrap
+                  :If (⎕NC⊂'zz'⊣zz←1⊃r)∊9.2 9.4 9.5
+                      r←11('ISOLATE ERROR: Result cannot be returned from isolate' '')
+                  :EndIf
+     
               :EndIf
               r←cleanDM r
           :EndHold
@@ -560,6 +600,7 @@
           ⎕TRAP←0 'C' 'f00⍬'
      
           ##.DRC←⎕THIS.DRC←getDRC #
+          ##.RPCServer.SendProgress←0 ⍝ Do not send progress reports
           ##.RPCServer.Boot
 ⍝ start as process if loaded with "isolate=isolate" in commandline
       }
@@ -584,7 +625,7 @@
           (host port)←ss.procs[procs⍳proc;2 3]
           data←host ss.orig chrid numid tgt ss.homeport port
           id←dix'host orig chrid numid tgt home port'data
-          z←connect chrid host port,⊂receive(source ss.listen id)
+          z←connect chrid host port,⊂receive(source options.listen id)
           id
 ⍝ Create DRC client for isolate.
 ⍝ Create id space to send and return for corresponding proxy.
@@ -732,6 +773,7 @@
       :OrIf 0.0001<|session.started-sessionStart''
           r←1
       :Else ⋄ r←0 ⍝ not a new session
+          session.listen←options.listen
           checkLocalServer ⍬
       :EndIf
      
@@ -792,7 +834,9 @@
       }
 
       receive←{⍺←⊢
+          ⎕←'rcv1'⎕TS
           (source listen id)←⍵                           ⍝ this all happens remotely
+          ⎕←listen
           name←id.chrid
           root←⎕NS''
           z←{root.⎕FX¨proxySpace.(⎕CR¨⎕NL ¯3),⊂⎕CR'tracelog'}⍣listen⊢1  ⍝ prepare for calls back
@@ -805,18 +849,23 @@
           z←iso.{6::0 ⋄ z←{}⎕CY ⍵}⍣(≡source)⊢source      ⍝ or copy if ws
           z←iso.{6::0 ⋄ z←{}(↑'⎕io' '⎕ml')⎕CY ⍵}⍣(≡source)⊢source
           z←name{#.⍎⍺,'←⍵'}iso                           ⍝ name it in root
+          ⎕←'rcv2'⎕TS
           z←#.DRC.Clt⍣listen⊢id.(chrid orig port)        ⍝ orig=host if local
+          ⎕←'rcv3'⎕TS
           1⊣1(700⌶)root                                  ⍝ Make isolate
       }
 
-    ∇ r←Reset mode;iso;clt;ok
+    ∇ r←Reset kill;iso;clt;ok
+      r←''
       :If 2=⎕NC'session.assoc.iso'
-          r←(⍕≢session.assoc.iso),' isolates, '
+          r,←(⍕≢session.assoc.iso),' isolates, '
           :For iso :In session.assoc.iso ⍝ For each known isolate
               {}DRC.Close'Iso',⍕iso
           :EndFor
+      :EndIf
      
-          r,←(⍕≢session.procs),' processes reset'
+      :If 2=⎕NC'session.procs'
+          r,←(⍕≢session.procs),' processes, '
           :For clt :In session.procs[;4] ⍝ For each process
               {}DRC.Close clt
           :EndFor
@@ -826,12 +875,15 @@
               ⎕DL session.retry_interval×count←count+1
           :Until count>session.retry_limit
           r←r,(~ok)/' (service processes have not died)'
+      :EndIf
      
-          :If 2=⎕NC'session.listeningtid'
-              ⎕TKILL session.listeningtid
-          :EndIf
-      :Else
-          r←'nothing to reset'
+      :If 2=⎕NC'session.listeningtid'
+          ⎕TKILL session.listeningtid
+          r,←'callback listener, '
+      :EndIf
+     
+      :If 0≠≢r ⋄ r←'Reset: ',¯2↓r
+      :Else ⋄ r←'Nothing found to reset'
       :EndIf
       ⎕EX'session'
     ∇
@@ -902,6 +954,7 @@
       }
 
       whoami←{⍺←⊢
+          '127.0.0.1'
           (W wc wa L lc la A ac aa)←messages'⍝- '
           (adr cfg)←(W L A⍳⊂3⍴⊃#.⎕WG'APLVersion')⊃(wa wc)(la lc)(aa ac)
           ⊃{(⍵≠' ')⊂⍵⊣⎕ML←3}(1↓⍳∘':'↓⊢)⊃{⍵⌿⍨∨/adr⍷minuscule↑⍵}⎕CMD cfg
@@ -939,14 +992,16 @@
               ~home:{rc=0:⍵ ⋄ ⍎⎕←'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
               ok:⊢res                           ⍝ spiffing!
-              ((⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res)iSpace.qsignal rc
+              (,⍕(⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res)iSpace.qsignal rc
    ⍝ execute expression supplied to isolate
           }
 
         ∇ r←iSend data;send;ev;nm;rc;res;cmd
           send←((⍕iSpace),'.execute')data    ⍝ RPCServer runs this
           :Trap 0 ⋄ res←iSpace.DRC.Send iD.chrid send
-          :Else ⋄ 'ISOLATE: INTERNAL ERROR - RESET REQUIRED'iSpace.qsignal 6
+          :Else
+              ⎕←'ISOLATE: Transmission failure: ',⎕DMX.Message
+              'ISOLATE: Transmission failure'iSpace.qsignal 6
           :EndTrap
           rc cmd ev data←4↑res
           :If 0≠rc ⋄ r←86(('COMMUNICATIONS FAILURE ',⍕rc cmd)ev)          ⍝ ret ⎕EN ⎕DM
@@ -962,7 +1017,10 @@
                   →(∨/'Yy'∊⊃{(1+⍵⍳'?')↓⍵}⍞~' ')⍴WAIT
                   ('USER INTERRUPT ',⍕⎕DMX.EN)iSpace.qsignal 6
               :EndTrap
-              :If rc=0 ⋄ r←1⊃data    ⍝ if rc is 0 res which will be (0 result)
+              :If rc=0
+                  :If 0=⊃data ⋄ r←1⊃data     ⍝ if rc is 0 res which will be (0 result)
+                  :Else ⋄ r←(1↑data),⊂1↓data,⊂'' ⍝ error from RPCServer framework itself
+                  :EndIf
               :Else ⋄ r←rc((⍕rc nm)ev) ⍝ else return rc and faked ⎕DM
               :EndIf
    ⍝ called from iSyntax, iEvaluate and from
