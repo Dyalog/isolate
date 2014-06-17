@@ -22,6 +22,7 @@
      AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.AddServer⊢⍵ ⋄ ⍺(ynys.AddServer)⍵}
      StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(ynys.StartServer)⍵}
      Config←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Config⊢⍵ ⋄ ⍺(ynys.Config)⍵}
+     State←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.State⊢⍵ ⋄ ⍺(ynys.State)⍵}
 
      Values←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Values⊢⍵ ⋄ ⍺(ynys.Values)⍵}
      Available←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Available ⍵}

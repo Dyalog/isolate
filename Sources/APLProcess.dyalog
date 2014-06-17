@@ -73,7 +73,7 @@
     ∇
 
     ∇ r←GetCurrentProcessId;t
-      :Access Public
+      :Access Public Shared
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
       :Else
@@ -81,13 +81,20 @@
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn
       :Access Public Shared
-      ⎕USING←'System,system.dll'
       :If IsWin
-          r←2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
-          r←r,(~(¯1↑r)∊'\/')/'/' ⍝ Add separator if necessary
-          r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
+          r←''
+          :Trap 0
+              'gmfn'⎕NA'U4 kernel32|GetModuleFileName* P =T[] U4'
+              r←⊃⍴/gmfn 0(1024⍴' ')1024
+          :EndTrap
+          :If 0∊⍴r
+              ⎕USING←'System,system.dll'
+              r←2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
+              r←r,(~(¯1↑r)∊'\/')/'/' ⍝ Add separator if necessary
+              r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
+          :EndIf
       :Else
           t←⊃_SH'ps -p ',(⍕GetCurrentProcessId),' h -o cmd'
           :If '"'''∊⍨⊃t  ⍝ if command begins with ' or "
@@ -141,42 +148,46 @@
       :EndIf
     ∇
 
-    ∇ r←ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask
+    ∇ r←{all}ListProcesses procName;me;⎕USING;procs;unames;names;name;i;pn;kid;parent;mask;n
       :Access public shared
-    ⍝ returns my child processes
+    ⍝ returns either my child processes or all processes
     ⍝ procName is either '' for all children, or the name of a process
     ⍝ r[;1] - child process number (Id)
     ⍝ r[;2] - child process name
       me←GetCurrentProcessId
       r←0 2⍴0 ''
       procName←,procName
+      all←{6::⍵ ⋄ all}0 ⍝ default to just my childen
      
       :If IsWin
           ⎕USING←'System,system.dll'
      
           :If 0∊⍴procName ⋄ procs←Diagnostics.Process.GetProcesses''
           :Else ⋄ procs←Diagnostics.Process.GetProcessesByName⊂procName ⋄ :EndIf
-     
-          :If 0<⍴procs
-              unames←∪names←procs.ProcessName
-              :For name :In unames
-                  :For i :In ⍳0+.=(,⊂name)⍳names
-                      pn←name,(i≠0)/'#',⍕i
-                      :Trap 0 ⍝ trap here just in case a process disappeared before we get to it
-                          parent←⎕NEW Diagnostics.PerformanceCounter('Process' 'Creating Process Id'pn)
-                          :If me=parent.NextValue
-                              kid←⎕NEW Diagnostics.PerformanceCounter('Process' 'Id Process'pn)
-                              r⍪←(kid.NextValue)name
-                          :EndIf
-                      :EndTrap
+          :If all
+              r←↑procs.(Id ProcessName)
+              r⌿⍨←r[;1]≠me
+          :Else
+              :If 0<⍴procs
+                  unames←∪names←procs.ProcessName
+                  :For name :In unames
+                      :For i :In ⍳n←1+.=(,⊂name)⍳names
+                          pn←name,(n≠1)/'#',⍕i
+                          :Trap 0 ⍝ trap here just in case a process disappeared before we get to it
+                              parent←⎕NEW Diagnostics.PerformanceCounter('Process' 'Creating Process Id'pn)
+                              :If me=parent.NextValue
+                                  kid←⎕NEW Diagnostics.PerformanceCounter('Process' 'Id Process'pn)
+                                  r⍪←(kid.NextValue)name
+                              :EndIf
+                          :EndTrap
+                      :EndFor
                   :EndFor
-              :EndFor
+              :EndIf
           :EndIf
-     
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
       ⍝ so, the best we can do at this point is identify processes that we tagged with ppid=
-          mask←' '∧.=procs←' ',↑_SH'ps -eo pid,cmd | grep APLppid=',(⍕GetCurrentProcessId),(0<⍴procName)/' | grep ',procName
+          mask←' '∧.=procs←' ',↑_SH'ps -eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName
           mask∧←2≥+\mask
           procs←↓¨mask⊂procs
           mask←me≠tonum¨1⊃procs ⍝ remove my task
@@ -242,7 +253,7 @@
       :EndIf
     ∇
 
-    ∇ r←IsRunning args;⎕USING;start;exe;pid;proc;diff
+    ∇ r←IsRunning args;⎕USING;start;exe;pid;proc;diff;res
       :Access public shared
       ⍝ args - pid {exe} {startTS}
       r←0
@@ -260,11 +271,16 @@
               r∧←exe≡proc.ProcessName
           :EndIf
           :If ⍬≢start
-              diff←|-/#.DFSUtils.DateToIDN¨start(proc.StartTime.(Year Month Day Hour Minute Second Millisecond))
-              r∧←diff≤24 60 60 1000⊥0 1 0 0÷×/24 60 60 1000 ⍝ consider it a match within a 1 minute window
+              :Trap 90
+                  diff←|-/#.DFSUtils.DateToIDN¨start(proc.StartTime.(Year Month Day Hour Minute Second Millisecond))
+                  r∧←diff≤24 60 60 1000⊥0 1 0 0÷×/24 60 60 1000 ⍝ consider it a match within a 1 minute window
+              :Else
+                  r←0
+              :EndTrap
           :EndIf
       :Else
-          ∘∘∘ ⍝!!!TODO write Unix version
+          →0↓⍨r←~0∊⍴res←_SH'ps h -p ',(⍕pid),' -o cmd'
+          r>←∨/'<defunct>'⍷⊃,/res
       :EndIf
     ∇
 
@@ -283,7 +299,7 @@
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
       :Else
-          ∘∘∘ ⍝!!!TODO write unix
+          {}_SH'kill -3 ',⍕pid ⍝ issue strong interrupt
       :EndIf
     ∇
 
@@ -308,5 +324,32 @@
         ∇
     :endclass
 
+    ∇ r←ProcessUsingPort port;t
+    ⍝ return the process ID of the process (if any) using a port
+      :Access public shared
+      r←⍬
+      :If IsWin
+          :If ~0∊⍴t←_SH'netstat -a -n -o'
+          :AndIf ~0∊⍴t/⍨←∨/¨'LISTENING'∘⍷¨t
+          :AndIf ~0∊⍴t/⍨←∨/¨((':',⍕port),' ')∘⍷¨t
+              r←∪∊¯1↑¨(//)∘⎕VFI¨t
+          :EndIf
+      :Else
+          :If ~0∊⍴t←_SH'netstat -l -n -p 2>/dev/null | grep '':',(⍕port),' '''
+              r←∪∊{⊃(//)⎕VFI{(∧\⍵∊⎕D)/⍵}⊃¯1↑{⎕ML←3 ⋄ (' '≠⍵)⊂⍵}⍵}¨t
+          :EndIf
+      :EndIf
+    ∇
+   
+    ∇ r←MyDNSName;GetComputerNameExW
+      :Access Public Shared
+     
+      :If IsWin
+          ⎕NA'I4 Kernel32|GetComputerNameExW U4 >0T =U4'
+          r←2⊃GetComputerNameExW 7 255 255
+      :Else
+          ∘∘∘ ⍝ TODO: UNIX Version
+      :EndIf
+    ∇
 
 :EndClass

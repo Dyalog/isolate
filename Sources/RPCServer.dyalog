@@ -1,6 +1,7 @@
 ﻿:Namespace RPCServer
     (⎕IO ⎕ML)←1 1
     SendProgress←0
+    Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in 
 
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
@@ -93,6 +94,7 @@
       rt←'R'∊'.'⎕WG'APLVersion'                   ⍝ Runtime or DLLRT
       (start quiet autoshut)←0 rt 0∨3↑start
       {}##.DRC.Init''
+      :If (⊂Protocol)∊'IPv4' 'IPv6' ⋄ ##.DRC.SetProp'.' 'Protocol'Protocol ⋄ :EndIf
      
       :If start
           :If 0≠1⊃r←##.DRC.Srv(name''port'Command'),srvparams ⋄ :Return ⋄ :EndIf ⍝ Exit if unable to start server
