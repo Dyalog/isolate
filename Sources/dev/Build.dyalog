@@ -33,5 +33,5 @@
  ⎕LX←'#.isolate.ynys.isoStart ⍬'
  ⎕←'      )WSID ',⎕WSID←path,'Distribution\isolate.dws'
  ⎕←'⍝ Now:'
- ⎕←'      )erase Build BuildCovers Clear Load'
+ ⎕←'      )erase Build BuildCovers Clear Dev Load'
  ⎕←'      )SAVE'
