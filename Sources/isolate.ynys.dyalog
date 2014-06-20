@@ -98,10 +98,10 @@
           ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
           z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
      
-          maxws←' -maxws=',⍕options.maxws
+          maxws←' maxws=',⍕options.maxws
           (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
-          iso←('-isolate=isolate -onerror=',(⍕op.onerror),' -isoid=',(⍕ss.callback),maxws)
-          iso,←' -protocol=',op.protocol
+          iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
+          iso,←' protocol=',op.protocol
           ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
           ports←ss.homeport+1+⍳op.(processors×processes)
           pids←(1⊃⎕AI)+⍳⍴ports
@@ -113,19 +113,18 @@
      
           ss.started←sessionStart''               ⍝ last thing so we know
           1:⊢1                                    ⍝ 1 - newly started
-⍝ Init if new ss
+     ⍝ Init if new ss
 ⍝ ⍵ ?
 ⍝ ← 1 | 0 - 1=started, 0=already
       }
 
 
-    ∇ r←InitProcesses;z;count;limit;ok;⎕TRAP
-      ⎕TRAP←0 'S'
+    ∇ r←InitProcesses;z;count;limit;ok
       (count limit)←0 3
      
       :Repeat
           count+←1
-          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'-AutoShut=1 -Port=',⍕⍵,iso}¨ports
+          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',⍕⍵,iso}¨ports
           procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
      
           r←pids InitConnections(ss.orig)ports(ss.callback)
@@ -138,7 +137,7 @@
       :Until ok∨count>limit
       'ISOLATE: Unable to initialise isolate processes'⎕SIGNAL ok↓11
     ∇
-    
+
     ∇ r←pids InitConnections(addr ports id);i
       r←(≢pids)⍴⊂''
       :For i :In ⍳≢pids
@@ -211,12 +210,14 @@
           ~newSession'':(0⊃msg),' ',options.status
           z←Config'status' 'server'
           z←Init''
-          addresses←3↑⍤1↑1⊃DRC.GetProp'.' 'lookup' '' 80
+     
+          address←##.APLProcess.MyDNSName
+     
+          addresses←3↑⍤1↑1⊃DRC.GetProp'.' 'lookup'address 80
           addresses[;1]←¯3↓¨addresses[;1]
           addresses←addresses[⍋↑addresses[;2];0 1]
           addresses←addresses[;0]{⊂⍺ ⍵}⌸0 1↓addresses
      
-          address←##.APLProcess.MyDNSName
           ports←∪session.procs[;3]
           info←(1 2⊃¨⊂msg),⍪address ports
           res←⊃,/⍕¨,(4 5 6 7⊃¨⊂msg),⍪address(⊃ports)(⍴ports)''
@@ -243,11 +244,11 @@
 
       addWSpath←{⍺←⊢
           ∨/'/\'∊ws←⍵:⊢ws       ⍝ assume extant path is good
-          dir←2 ⎕NQ'.' 'GetEnvironment' 'dyalog'
+          dir←2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
           sep←⊃'/\'∩dir
           dir,←sep~⊢/dir        ⍝ append sep if needs
-          dir,'WS',sep,ws       ⍝ WS folder
-⍝ add ...dyalog/WS/   to ws if no path spec'd
+          dir,'ws',sep,ws       ⍝ WS folder
+⍝ add ...dyalog/ws/   to ws if no path spec'd
       }
 
       and←{⍺←⊢
@@ -605,12 +606,18 @@
           iso←'isolate'
           parm←2 ⎕NQ'.' 'GetEnvironment'iso
           parm≢iso:shy←1
-     
+          msgbox←{
+              last←{⍺ ⍺⍺[(≢⍴⍵)-~⎕IO]⍵}
+              ctr←{(⌊0.5×⍺-⍨⊢/⍴⍵)⌽⍺↑last ⍵}
+              'W'=⊃2↓'#'⎕WG'APLVersion':⎕DQ'msg'⎕WC'MsgBox'⍺ ⍵'Error'
+              {⎕SM←2 7⍴⍺ 1 1 0 0 0 2059,⍵ 3 1 0 0 0 2059 ⋄ (⎕SM←0⌿⎕SM)⊢''⊣⎕SR 1
+              }/⊃¨ctr/¨(2↑⍉⍪⍺){(⌈/≢∘⍉¨⍺ ⍵){⍺ ⍵}¨⍺ ⍵}↑⍵
+          }
           f00←{
               'R'∊⊃⊢/'#'⎕WG'APLVersion':{
                   Caption←'Isolate Startup Failure'
                   Text←⎕DM
-                  ⎕DQ'Msg'⎕WC'MsgBox'Caption Text'Error'
+                  Caption msgbox Text
               }''
               (⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
           }
@@ -804,14 +811,7 @@
 ⍝ that indicates that the ws was saved with the session space intact
     ∇
 
-      processors←{⍺←⊢
-          (1111⌶⊢⊢)1111⌶1
-⍝ uh? aargh!
-⍝ At its first invocation 1111⌶ returns the number of processors
-⍝   available having set the stored value to ⍵.
-⍝ Subsequent calls return the immediately previously stored value.
-⍝ The above arbitrarily sets 1, getting & resetting the previous.
-      }
+    processors←{1111⌶⍬}
 
       prof←{⍺←⊢ ⋄ ⎕IO←0
           z←⎕PROFILE'clear'
@@ -955,7 +955,7 @@
 ⍝ set default options and permit user changes
 ⍝ but leave Init to apply them.
       }
-      
+
     ∇ r←State dummy;counts
      ⍝ Return current process & isolate state
      

@@ -124,7 +124,7 @@
       :Access Public Shared
       ⍝ returns [;1] pid [;2] process name of any processes that were not killed
       r←0 2⍴0 ''
-      :If 0≠⍴kids←ListProcesses Exe ⍝ All child processes using the exe
+      :If ~0∊⍴kids←ListProcesses Exe ⍝ All child processes using the exe
           :If IsWin
               ⎕USING←'System,system.dll'
               p←Diagnostics.Process.GetProcessById¨kids[;1]
@@ -340,15 +340,25 @@
           :EndIf
       :EndIf
     ∇
-   
+
     ∇ r←MyDNSName;GetComputerNameExW
       :Access Public Shared
      
       :If IsWin
           ⎕NA'I4 Kernel32|GetComputerNameExW U4 >0T =U4'
           r←2⊃GetComputerNameExW 7 255 255
+          :Return
+⍝ ComputerNameNetBIOS = 0
+⍝ ComputerNameDnsHostname = 1
+⍝ ComputerNameDnsDomain = 2
+⍝ ComputerNameDnsFullyQualified = 3
+⍝ ComputerNamePhysicalNetBIOS = 4
+⍝ ComputerNamePhysicalDnsHostname = 5
+⍝ ComputerNamePhysicalDnsDomain = 6
+⍝ ComputerNamePhysicalDnsFullyQualified = 7 <<<
+⍝ ComputerNameMax = 8
       :Else
-          ∘∘∘ ⍝ TODO: UNIX Version
+          r←⊃_SH'hostname -f'
       :EndIf
     ∇
 
