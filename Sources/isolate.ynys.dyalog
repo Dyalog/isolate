@@ -13,7 +13,7 @@
           addr←whoami''
       :Else
           :If ''⍬≢0/¨w ⋄ r←1⊃msg ⋄ :Return ⋄ :EndIf
-          (addr ports)←w
+          (addr ports)←,¨w
           :If {1∊∊∘∊⍨⍵⊣⎕ML←0}addr ports ⋄ r←2⊃msg ⋄ :Return ⋄ :EndIf
       :EndIf
       z←Config'status' 'client'
@@ -228,7 +228,9 @@
      
           ports←∪session.procs[;3]
           info←(1 2⊃¨⊂msg),⍪address ports
-          res←⊃,/⍕¨,(4 5 6 7⊃¨⊂msg),⍪address(⊃ports)(⍴ports)''
+          res←{4<≢⍵:msg[4 5 6 7],⍪address(⊃⍵)(≢⍵)''
+              msg[4 5 7],⍪address((⊃⍵)+⍳≢⍵)''}ports
+          res←∊⍕¨res
           ⎕←⍪,' ',⍪info(3⊃msg)res
           ⎕←⍪'' 'Full IP address list:' ''
           ⎕←addresses
@@ -890,7 +892,7 @@
                       :For iso :In isos
                           {}DRC.Close'Iso',⍕iso
                       :EndFor
-                      session.assoc.(busy iso procs)/⍨←⊂~mask2
+                      session.assoc.(busy iso proc)/⍨←⊂~mask2
                   :EndIf
               :EndIf
      
@@ -1033,6 +1035,7 @@
               r←session.procs[;2 3]
               r[(0,2≡/r[;0])/⍳1↑⍴r;0]←⊂''
               r,←↑stats
+              r[;2]←↓'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 0 ¯1↓↑r[;2]
               r←({⍵,[¯0.5](≢¨⍵)⍴¨'-'}'Host' 'Port' 'Start' 'Cmds' 'Errs' 'CPU')⍪r
           :Else
               r←'[no servers defined]'
