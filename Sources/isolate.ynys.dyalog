@@ -886,6 +886,7 @@
 
     ∇ r←RemoveServer server;mask;iso;isos;clt;mask2;local;ok;count
       :If 2=⎕NC'session.procs'
+          :If 0=⍴server ⋄ server←whoami'' ⋄ :EndIf
           :If ∨/mask←server∘≡¨session.procs[;2]
               :If 2=⎕NC'session.assoc.proc'
                   :If 0≠≢isos←(mask2←session.assoc.proc∊mask/session.procs[;0])/session.assoc.iso
@@ -1104,7 +1105,9 @@
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
-              z←{ss.assoc.((iso⍳⍵)⊃busy)←1}⍣home⊢ID
+              z←{iso←ss.assoc.iso
+                  (≢iso)≤i←iso⍳⍵:'ISOLATE: No longer accessible'⎕SIGNAL 6
+                  (i⊃ss.assoc.busy)←1}⍣home⊢ID
               (rc res)←z←iSend iD.tgt data      ⍝ the biz
               ok←0=rc
               ~home:{rc=0:⍵ ⋄ ⍎'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
