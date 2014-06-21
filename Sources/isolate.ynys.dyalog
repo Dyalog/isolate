@@ -6,29 +6,37 @@
     tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵}
     ⍝tracelog←{}        ⍝ uncomment this line to disable all logging
 
-      AddServer←{⍺←⊢
-          msg←messages'⍝- '
-          'server'≡Config'status':0⊃msg
-          ''⍬≢0/¨⍵:1⊃msg
-          (addr ports)←⍵
-          {1∊∊∘∊⍨⍵⊣⎕ML←0}addr ports:2⊃msg
-          z←Config'status' 'client'
-          z←Init''
-          ss←session
-          (⊂addr)∊ss.procs[;2]:(3⊃msg),' ',addr
+    ∇ r←AddServer w;msg;addr;ports;z;ss;id;pclts;m;old;local
+      msg←messages'⍝- '
+      :If 'server'≡Config'status' ⋄ r←0⊃msg ⋄ :Return ⋄ :EndIf
+      :If local←''≡w
+          addr←whoami''
+      :Else
+          :If ''⍬≢0/¨w ⋄ r←1⊃msg ⋄ :Return ⋄ :EndIf
+          (addr ports)←w
+          :If {1∊∊∘∊⍨⍵⊣⎕ML←0}addr ports ⋄ r←2⊃msg ⋄ :Return ⋄ :EndIf
+      :EndIf
+      z←Config'status' 'client'
+      z←Init 0
+      ss←session
+      :If (⊂addr)∊ss.procs[;2] ⋄ r←(3⊃msg),' ',addr ⋄ :Return ⋄ :EndIf
+      :If local
+          ss.procs⍪←ss InitProcesses options
+      :Else
           id←(⍳≢ports)+1+0⌈⌈/⊣/ss.procs
           ss.retry_limit←2⊣old←ss.retry_limit
           pclts←id InitConnections addr ports ¯1
           ss.retry_limit←old
-          m←0∊≢¨pclts:(4⊃msg),' ',addr,': ',⍕m/ports
+          :If m←0∊≢¨pclts ⋄ r←(4⊃msg),' ',addr,': ',⍕m/ports ⋄ :Return ⋄ :EndIf
           ss.procs⍪←id,0,(⊂addr),ports,⍪pclts
-          1:State''
+      :EndIf
+      r←State''
 ⍝- Session already started as server
 ⍝- Argument must be 'ip-address' (ip-ports)
 ⍝- IP-address nor IP-ports can be empty
 ⍝- Already added:
 ⍝- Unable to connect to
-      }
+    ∇
 
     ∇ r←DRCClt args;count
       ⍝ Create a DRC Client, looping a bit
@@ -73,10 +81,9 @@
       :EndIf
     ∇
 
-      Init←{⍺←⊢
-          ⎕THIS.⎕IO←0
-          new←newSession''
-          ~new:⊢0                                 ⍝ 0 - already started
+    ∇ {r}←Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts
+      r←⎕THIS.⎕IO←0
+      :If newSession''
           here.iSpace←here←⎕THIS
           z←here.(proxyClone←⎕NS'').⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)
           z←here.proxyClone.⎕FX iSpace.⎕CR'tracelog'
@@ -84,58 +91,59 @@
           z←setDefaults''
           op←options
           z←getSet'debug'op.debug                 ⍝ on or off
-          trapErr''::signal''
-          ##.DRC←here.DRC←getDRC op.drc
-          z←DRC.Init ⍬
-          z←DRC.SetProp'.' 'Protocol'(op.protocol)
-          here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
-          ss.retry_limit←10      ⍝ How many retries
-          ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
-          ss.orig←whoami''
-          ss.homeport←7051
-          ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
-          ss.nextid←2⊃⎕AI                   ⍝ isolate id
-          ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
-          z←⎕TPUT ss.assockey←1+ss.callback       ⍝ queue for assoc and procs
+          :Trap trapErr''
+              ##.DRC←here.DRC←getDRC op.drc
+              z←DRC.Init ⍬
+              z←DRC.SetProp'.' 'Protocol'(op.protocol)
+              here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
+              ss.retry_limit←10      ⍝ How many retries
+              ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
+              ss.orig←whoami''
+              ss.homeport←7051
+              ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
+              ss.nextid←2⊃⎕AI                   ⍝ isolate id
+              ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
+              z←⎕TPUT ss.assockey←1+ss.callback ⍝ queue for assoc and procs
+              ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
+              ss.procs←0 5⍴0 ⍬'' 0 ''
      
-          maxws←' maxws=',⍕options.maxws
-          (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
-          iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
-          iso,←' protocol=',op.protocol
-          ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
-          ports←ss.homeport+1+⍳op.(processors×processes)
-          pids←(1⊃⎕AI)+⍳⍴ports
+              :If 1≡local ⍝ if we're to start local processes
+                  ss.procs⍪←ss InitProcesses op
+              :EndIf
      
-          pclts←InitProcesses
-     
-          ss.procs←pids,procs,(⊂ss.orig),ports,⍪pclts
-          ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
-     
-          ss.started←sessionStart''               ⍝ last thing so we know
-          1:⊢1                                    ⍝ 1 - newly started
-     ⍝ Init if new ss
-⍝ ⍵ ?
-⍝ ← 1 | 0 - 1=started, 0=already
-      }
+              ss.started←sessionStart''               ⍝ last thing so we know
+              r←1
+          :Else
+              signal''
+          :EndTrap
+      :EndIf
+    ∇
 
-
-    ∇ r←InitProcesses;z;count;limit;ok
+    ∇ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts
       (count limit)←0 3
+      maxws←' maxws=',⍕op.maxws
+      (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
+      iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
+      iso,←' protocol=',op.protocol
+      ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
+      ports←ss.homeport+1+⍳op.(processors×processes)
+      pids←(1⊃⎕AI)+⍳⍴ports
      
       :Repeat
           count+←1
           procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',⍕⍵,iso}¨ports
           procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
      
-          r←pids InitConnections(ss.orig)ports(ss.callback)
+          pclts←pids InitConnections(ss.orig)ports(ss.callback)
      
-          :If ~ok←~∨/0∊≢¨r ⍝ at least one failed
+          :If ~ok←~∨/0∊≢¨pclts ⍝ at least one failed
               ⎕←'ISOLATE: Unable to connect to started processes (attempt ',(⍕count),' of ',(⍕limit),')'
               ⎕DL 5 ⋄ {}procs.Kill ⋄ ⎕DL 5
               ports+←1+op.(processors×processes)
           :EndIf
       :Until ok∨count>limit
       'ISOLATE: Unable to initialise isolate processes'⎕SIGNAL ok↓11
+      r←pids,procs,(⊂ss.orig),ports,⍪pclts
     ∇
 
     ∇ r←pids InitConnections(addr ports id);i
@@ -192,7 +200,7 @@
     ∇
 
       New←{⍺←⊢
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           caller←callerSpace''
           source←caller argType ⍵
@@ -209,7 +217,7 @@
           msg←messages'⍝- ' ⍝
           ~newSession'':(0⊃msg),' ',options.status
           z←Config'status' 'server'
-          z←Init''
+          z←Init 1
      
           address←##.APLProcess.MyDNSName
      
@@ -660,7 +668,7 @@
       }
 
       ll←{⍺←⊢
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           s←⍺⍺ fnSpace'f'
      
@@ -676,7 +684,7 @@
       }
 
       llEach←{⍺←⊢
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           n←⍺⍺ fnSpace'f'
           s←⍴⍺⊢¨⍵
@@ -693,7 +701,7 @@
       }
 
       llKey←{⍺←⊢                                    ⍝ key operator
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           ⍵≡⍺ ⍵:⍵ ∇(callerSpace'').⍳≢⍵
      
@@ -713,7 +721,7 @@
       }
 
       llOuter←{⍺←'VALENCE ERROR'⎕SIGNAL 6
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           (⍉(⌽s)⍴⍉⍺)⍺⍺ llEach ⍵⍴⍨s←(⍴⍺),⍴⍵
      
@@ -731,7 +739,7 @@
       }
 
       llRank←{⍺←⊢
-          z←Init 0
+          z←Init 1
           trapErr''::signal''
           mlr←⌽3⍴⌽⍵⍵,⍬
           m←⍵≡⍺ ⍵
@@ -845,6 +853,8 @@
 ⍝- LastError
 ⍝- New
 ⍝- StartServer
+⍝- RemoveServer
+⍝- Stats
 ⍝- ll
 ⍝- llEach
 ⍝- llKey
@@ -872,7 +882,43 @@
           1⊣1(700⌶)root                                  ⍝ Make isolate
       }
 
-    ∇ r←Reset kill;iso;clt;ok;local
+    ∇ r←RemoveServer server;mask;iso;isos;clt;mask2;local;ok;count
+      :If 2=⎕NC'session.procs'
+          :If ∨/mask←server∘≡¨session.procs[;2]
+              :If 2=⎕NC'session.assoc.proc'
+                  :If 0≠≢isos←(mask2←session.assoc.proc∊mask/session.procs[;0])/session.assoc.iso
+                      :For iso :In isos
+                          {}DRC.Close'Iso',⍕iso
+                      :EndFor
+                      session.assoc.(busy iso procs)/⍨←⊂~mask2
+                  :EndIf
+              :EndIf
+     
+              :For clt :In mask/session.procs[;4]
+                  {}DRC.Close clt
+              :EndFor
+     
+              :If 0≠≢local←{(⍵≠0)/⍵}mask/session.procs[;1]
+                  :If 'server'≡options.status
+                      local.Kill
+                  :Else
+                      count←0
+                      :While ~ok←∧/local.HasExited
+                          ⎕DL session.retry_interval×count←count+1
+                      :Until count>session.retry_limit
+                  :EndIf
+              :EndIf
+              session.procs⌿⍨←~mask
+              r←State''
+          :Else
+              r←'[server "',server,'" not found]'
+          :EndIf
+      :Else
+          r←'[no servers defined]'
+      :EndIf
+    ∇
+
+    ∇ r←Reset kill;iso;clt;ok;local;count
       r←''
       :If 2=⎕NC'session.assoc.iso'
           r,←(⍕≢session.assoc.iso),' isolates, '
@@ -911,10 +957,6 @@
       :Else ⋄ r←'Nothing found to reset'
       :EndIf
       ⎕EX'session'
-    ∇
-
-    ∇ stop;⎕TRAP
-      ⎕TRAP←0 'S' ⋄ ∘
     ∇
 
       sessionStart←{⍺←⊢
@@ -960,16 +1002,50 @@
      ⍝ Return current process & isolate state
      
       :If 9=⎕NC'session'
-          counts←session.assoc.(proc{⍺,(+/⍵),+/~⍵}⌸busy)
-          r←session.procs[;2 3]
-          r,←{⍵,+/⍵}(counts⍪0)[counts[;0]⍳session.procs[;0];1 2]
-          r[(0,2≡/r[;0])/⍳1↑⍴r;0]←⊂''
-          r←({⍵,[¯0.5](≢¨⍵)⍴¨'-'}'Host' 'Port' 'Busy' 'Idle' 'Isolates')⍪r
-          r←r[;0 1 4 2]
+          :If 0≠≢session.procs
+              counts←session.assoc.(proc{⍺,(+/⍵),+/~⍵}⌸busy)
+              r←session.procs[;2 3]
+              r,←{⍵,+/⍵}(counts⍪0)[counts[;0]⍳session.procs[;0];1 2]
+              r[(0,2≡/r[;0])/⍳1↑⍴r;0]←⊂''
+              r←({⍵,[¯0.5](≢¨⍵)⍴¨'-'}'Host' 'Port' 'Busy' 'Idle' 'Isolates')⍪r
+              r←r[;0 1 4 2]
+          :Else
+              r←'[no servers defined]'
+          :EndIf
       :Else
           r←'[not initialised]'
       :EndIf
     ∇
+
+    ∇ r←Stats dummy;n;stats;proc;z
+      :If 9=⎕NC'session'
+          :If 0≠n←≢session.procs
+              stats←⍬
+              :For proc :In session.procs[;4]
+                  :If 0=⊃z←DRC.Send proc('ß' '')
+                  :AndIf 0=⊃z←DRC.Wait 1⊃z
+                  :AndIf 0=⊃z←3⊃z
+                      stats,←z[1]
+                  :Else
+                      stats,←⊂⍬
+                  :EndIf
+              :EndFor
+              r←session.procs[;2 3]
+              r[(0,2≡/r[;0])/⍳1↑⍴r;0]←⊂''
+              r,←↑stats
+              r←({⍵,[¯0.5](≢¨⍵)⍴¨'-'}'Host' 'Port' 'Start' 'Cmds' 'Errs' 'CPU')⍪r
+          :Else
+              r←'[no servers defined]'
+          :EndIf
+      :Else
+          r←'[not initialised]'
+      :EndIf
+    ∇
+
+    ∇ stop;⎕TRAP
+      ⎕TRAP←0 'S' ⋄ ∘
+    ∇
+
       until←{⍺←⊢ ⋄ f←⍺⍺ ⋄ t←⍵⍵
           ⍵≡⍺ ⍵:f⍣(t⊣)⍵
           ⍺{ ⍝ keep recursion local

@@ -19,10 +19,12 @@
      llOuter←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llOuter⊢⍵ ⋄ ⍺(⍺⍺ ynys.llOuter)⍵}
      llRank←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:⍺⍺ #.isolate.ynys.llRank ⍵⍵⊢⍵ ⋄ ⍺(⍺⍺ ynys.llRank ⍵⍵)⍵}
 
-     AddServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.AddServer⊢⍵ ⋄ ⍺(ynys.AddServer)⍵}
+     AddServer←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.AddServer ⍵}
+     RemoveServer←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.RemoveServer ⍵}
      StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(ynys.StartServer)⍵}
      Config←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Config⊢⍵ ⋄ ⍺(ynys.Config)⍵}
      State←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.State⊢⍵ ⋄ ⍺(ynys.State)⍵}
+     Stats←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Stats ⍵}
 
      Values←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Values⊢⍵ ⋄ ⍺(ynys.Values)⍵}
      Available←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Available ⍵}

@@ -1,7 +1,10 @@
 ﻿:Namespace RPCServer
     (⎕IO ⎕ML)←1 1
     SendProgress←0
-    Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in 
+    Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in
+    StartTime←⎕TS
+    Commands←Errors←CPU←0
+    ß←{} ⍝ stub "fake" function to allow stats reporting
 
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
@@ -66,16 +69,20 @@
       r←done←x ⍝ Will cause server to shut down
     ∇
 
-    ∇ Process(obj data);r
+    ∇ Process(obj data);r;c
       ⍝ Process a call. data[1] contains function name, data[2] an argument
      
       :If SendProgress
           {}##.DRC.Progress obj('    Thread ',(⍕⎕TID),' started to run: ',,⍕data) ⍝ Send progress report
       :EndIf
      
-      :Trap 0 ⋄ r←0((⍎1⊃data)(2⊃data))
-      :Else ⋄ r←⎕EN ⎕DM
-      :EndTrap
+      :If (,1⊃data)≡,'ß' ⍝ stats collection?
+          r←(0(StartTime Commands Errors CPU))
+      :Else
+          :Trap 0 ⋄ c←⎕AI[3] ⋄ r←0((⍎1⊃data)(2⊃data)) ⋄ CPU+←⎕AI[3]-c ⋄ Commands+←1
+          :Else ⋄ r←⎕EN ⎕DM ⋄ Errors+←1
+          :EndTrap
+      :EndIf
      
       :Trap 11
           {}##.DRC.Respond obj r
@@ -118,7 +125,7 @@
      
               rc obj event data←4↑wait←##.DRC.Wait name 3000 ⍝ Time out now and again
      
-              :Return :Select rc
+              :Select rc
               :Case 0
                   :Select event
                   :Case 'Error'
