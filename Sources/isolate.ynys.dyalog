@@ -131,7 +131,7 @@
      
       :Repeat
           count+←1
-          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',⍕⍵,iso}¨ports
+          procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',(⍕⍵),' APLCORENAME=',(⍕⍵),iso}¨ports
           procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
      
           pclts←pids InitConnections(ss.orig)ports(ss.callback)
