@@ -192,11 +192,12 @@
           procs←↓¨mask⊂procs
           mask←me≠tonum¨1⊃procs ⍝ remove my task
           procs←mask∘/¨procs[1 2]
+          mask←1
           :If 0<⍴procName
               mask←∨/¨(procName,' ')∘⍷¨(2⊃procs),¨' '
-              mask>←∨/¨'grep '∘⍷¨2⊃procs ⍝ remove procs that are for the searches
-              procs←mask∘/¨procs
           :EndIf
+          mask>←∨/¨'grep '∘⍷¨2⊃procs ⍝ remove procs that are for the searches
+          procs←mask∘/¨procs
           r←↑[0.1]procs
       :EndIf
     ∇
@@ -209,7 +210,7 @@
               Proc.Kill
               ⎕DL 0.2
           :Else
-              {}_SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
+              {}1 _SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
               {}⎕DL 2 ⍝ wait a couple seconds for it to react
               :If ~Proc.HasExited←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
                   Proc.HasExited∨←∨/'<defunct>'⍷⊃,/res
@@ -229,7 +230,7 @@
                       Proc.Kill
                       ⎕DL 0.2
                   :Else
-                      {}_SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
+                      {}1 _SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
                       {}⎕DL 2 ⍝ wait a couple seconds for it to react
                       :If ~Proc.HasExited←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
                           Proc.HasExited∨←∨/'<defunct>'⍷⊃,/res
@@ -239,6 +240,12 @@
               MAX-←1
           :Until Proc.HasExited∨MAX≤0
           r←Proc.HasExited
+      :ElseIf 2=⎕NC'Proc' ⍝ just a process id?
+          {}1 _SH'kill -9 ',,⍕Proc
+          {}⎕DL 2
+          :If ~r←0∊⍴res←_SH'ps h -p ',(,⍕Proc),' -o cmd'
+              r∨←∨/'<defunct>'⍷⊃,/res
+          :EndIf
       :EndIf
     ∇
 
@@ -299,11 +306,16 @@
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
       :Else
-          {}_SH'kill -3 ',⍕pid ⍝ issue strong interrupt
+          {}1 _SH'kill -3 ',⍕pid ⍝ issue strong interrupt
       :EndIf
     ∇
 
-    ∇ r←_SH cmd
+    ∇ r←{quietly}_SH cmd
+      :Access public shared
+      quietly←{6::⍵ ⋄ quietly}0
+      :If quietly
+          cmd←cmd,' </dev/null 2>&1'
+      :EndIf
       r←{0::'' ⋄ ⎕SH ⍵}cmd
     ∇
 
