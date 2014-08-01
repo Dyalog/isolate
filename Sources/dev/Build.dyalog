@@ -18,7 +18,7 @@
  ⎕←⎕SE.SALT.Load'⍵\Sources\RPCServer -target=isolate -source=no -nolink'
  ⎕←⎕SE.SALT.Load'⍵\Sources\APLProcess -target=isolate -nolink'
 
- :If 0=⍴rev←⎕CMD'subwcrev ',path
+ :If 0=⍴rev←⎕CMD'subwcrev "',path,'\"'
      ⎕←'NB: Unable to get SVN revision information!'
  :ElseIf 1≠⍴ver←('Updated to revision (\w+)'⎕S'\1')rev
  :OrIf 1∊'Local modifications found'⍷∊rev

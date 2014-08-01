@@ -88,6 +88,7 @@
           z←here.(proxyClone←⎕NS'').⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)
           z←here.proxyClone.⎕FX iSpace.⎕CR'tracelog'
           ss←here.session←⎕NS''
+          here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
           z←setDefaults''
           op←options
           z←getSet'debug'op.debug                 ⍝ on or off
@@ -95,7 +96,6 @@
               ##.DRC←here.DRC←getDRC op.drc
               z←DRC.Init ⍬
               z←DRC.SetProp'.' 'Protocol'(op.protocol)
-              here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
               ss.retry_limit←10      ⍝ How many retries
               ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
               ss.orig←whoami''
