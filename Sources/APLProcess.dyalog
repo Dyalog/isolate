@@ -96,7 +96,8 @@
               r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
           :EndIf
       :Else
-          t←⊃_SH'ps -p ',(⍕GetCurrentProcessId),' h -o cmd'
+⍝          t←⊃_SH'ps -p ',(⍕GetCurrentProcessId),' h -o cmd'
+          t←⊃⊢2 ⎕NQ '.' 'GetCommandLineArgs'
           :If '"'''∊⍨⊃t  ⍝ if command begins with ' or "
               r←{⍵/⍨{∧\⍵∨≠\⍵}⍵=⊃⍵}t
           :Else
