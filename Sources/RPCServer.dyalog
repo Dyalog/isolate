@@ -19,10 +19,25 @@
       r←⎕NEW #.APLProcess(ws params)
     ∇
 
-    ∇ Boot;name;port;certfile;keyfile;sslflags;num;getenv;secure;load;l;folder;z;autoshut;quiet
+    ∇ r←DNSLookup args;port;address;noport
+    ⍝ r[;1] protocol, [;2] address txt, [;3] numeric address, [;4] port
+    ⍝ /// Should really make its way into DRC
+     
+      :If noport←1=≡args ⋄ args←args 80 ⋄ :EndIf
+      (address port)←args
+      :If 1037=⊃r←##.DRC.GetProp'.' 'tcplookup'address port
+          r←##.DRC.GetProp'.' 'lookup'address port ⍝ name changed around Conga 2.5.22481
+      :EndIf
+      (⍕r)⎕SIGNAL(0≠1⊃r)⍴11
+      r←(-noport)↓⍤1↑2⊃r
+      r[;2]←((-(⍳∘':'⌽)¨r[;2]))↓¨r[;2]
+    ∇
+
+    ∇ Boot;name;port;certfile;keyfile;sslflags;num;getenv;secure;load;l;folder;z;autoshut;quiet;allowremote;commasep;localaddrs
     ⍝ Bootstrap an RPC-Server using the following command line parameters
     ⍝ -Port=nnnn
     ⍝ -Load=.dyalog files to load before start
+    ⍝ -AllowRemote=filter1,filter2,filter3
     ⍝ SSL Options
     ⍝ -CertFile=CertFile
     ⍝ -KeyFile=KeyFile
@@ -40,6 +55,15 @@
       port←num getenv'Port'
       autoshut←num getenv'AutoShut' ⍝ Shut down if 1st connection is lost
       quiet←num getenv'Quiet'       ⍝ Suppress diagnostic session output
+      allowremote←''                ⍝ No remote access
+     
+      z←##.DRC.Init''
+      localaddrs←⊃⍪/{0::0 3⍴⊂⍬ ⋄ DNSLookup ⍵}¨'' 'localhost' ⍝ Find all local addresses
+      :If 0=≢localaddrs ⍝ /// paranoia: the above SHOULD work
+          localaddrs←1 3⍴'IPv4' '127.0.0.1'(127 0 0 1)
+      :EndIf
+     
+      ⎕←'local:' ⋄ ⎕←localaddrs
      
       :If 0≠⍴load←getenv'Load'
           load←{1↓¨(','=⍵)⊂⍵}',',load
@@ -69,6 +93,19 @@
       r←done←x ⍝ Will cause server to shut down
     ∇
 
+    ∇ r←AllowRemoteAccess filters;i
+     ⍝ By default, RPCServer will only accept connections from the local machine
+     ⍝ /// validation?
+     
+      r←filters
+     
+      :If 0=⍴allowremote←r
+          ⎕←'Local access only'
+      :Else
+          ⎕←'Remote access allowed for ',,⍕filters
+      :EndIf
+    ∇
+
     ∇ Process(obj data);r;c
       ⍝ Process a call. data[1] contains function name, data[2] an argument
      
@@ -91,7 +128,7 @@
       :EndTrap
     ∇
 
-    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid
+    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid;addr;ok;i;filter;first
       ⍝ Run a Simple RPC Server
      
       (name port)←2↑args
@@ -119,11 +156,12 @@
       ⍝ Handle the server (maybe in a new thread)
       ⍪quiet↓⊂'Thread ',(⍕⎕TID),' is now handling server ''',name,'''.'
       done←0 ⍝ Done←1 in function "End"
+      first←''
      
       :While ~done
           :Trap 1002 1003 ⍝ trap weak and strong interrupts - on UNIX kill -2 and kill -3
      
-              rc obj event data←4↑wait←##.DRC.Wait name 3000 ⍝ Time out now and again
+              rc obj event data←4↑wait←##.DRC.Wait name 10000 ⍝ Time out now and again
      
               :Select rc
               :Case 0
@@ -135,8 +173,9 @@
                       :EndIf
      
                       :If autoshut=1
-                      :AndIf 0=≢2 2⊃#.DRC.Tree name
-                          ⍪quiet↓⊂'Last connection lost - AutoShut initiated' ⋄ done←1 ⋄ autoshut←2
+                      :AndIf 0=#.DRC.Exists first
+                          ⍪quiet↓⊂'First connection lost - AutoShut initiated'
+                          done←1 ⋄ autoshut←2
                       :EndIf
      
                   :Case 'Receive'
@@ -151,7 +190,21 @@
                       Process&obj data ⍝ Handle each call in new thread
      
                   :Case 'Connect' ⍝ Set 'KeepAlive' to 10 seconds so we discover IP disconnections
+                      first,←(0=⍴first)/obj ⍝ bond to parent
                       {}##.DRC.SetProp obj'KeepAlive' 10000 10000
+                      addr←{(-(⌽⍵)⍳':')↓⍵}2 2⊃##.DRC.GetProp obj'PeerAddr'
+                      :If ~ok←(⊂addr)∊localaddrs[;2] ⍝ remote
+                          :For i :In ⍳≢allowremote
+                              :Select 3↑filter←i⊃allowremote
+                              :CaseList 'ip=' 'IP=' ⍝ ip address
+                                  :If ok←ok∨addr{⍵≡(⍴⍵)↑⍺}3↓filter ⋄ :Leave ⋄ :EndIf
+                              :EndSelect
+                          :EndFor
+     
+                      :AndIf ~ok ⍝ Still not OK
+                          ⎕←'Connection refused from: ',addr
+                          {}##.DRC.Close obj ⍝ 'bye
+                      :EndIf
      
                   :Else ⍝ Unexpected result? should NEVER happen
                       ⎕←'Unexpected result "',event,'" from object "',name,'" - RPC Server shutting down' ⋄ done←1

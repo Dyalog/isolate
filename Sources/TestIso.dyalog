@@ -3,13 +3,14 @@
     (⎕IO ⎕ML)←1 1
     assert←{'Assertion failed'⎕SIGNAL(⍵=0)/11} 
     runtime←1
+    dup←{⍵ ⍵}
     
     ∇ msgs expect expr;z;got
     ⍝ Check that the expected error was received
       :Trap 86 ⍝ FUTURE ERROR
           z←+⍎expr ⍝ force future to materialize
           'DID NOT FAIL'⎕SIGNAL 11
-      :Else         ⍝ We are expecting a VALUE ERROR
+      :Else        ⍝ We are expecting a VALUE ERROR
           got←⎕DMX.Message
           :If ((∊⍕¨msgs)~': '){⍺≢(⍴⍺)↑⍵}got~': '
               'expected' 'got'⍪⍉⍪msgs got
@@ -41,7 +42,7 @@
       :EndIf
     ∇
 
-    ∇ z←Basic;time;delta
+    ∇ z←Basic;time;delta;is;ns
      ⍝ Take isolates for a little spin
      
       {}#.isolate.Config'listen' 0
@@ -57,12 +58,23 @@
       z←+/z                   ⍝ This should block
       assert 4<delta←(3⊃⎕AI)-time   ⍝ So now we should be >4s
      
-⍝ Check that defined functions do not block...
+     ⍝ Check that defined functions do not block...
       time←3⊃⎕AI ⋄ z←{⍵ ⍵}⎕DL #.IÏ 1
       assert 100>delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
       z←+/z                   ⍝ This should block
       assert 4<delta←(3⊃⎕AI)-time   ⍝ So now we should me >4s
      
+     ⍝ Check isolate creation options
+      data←42 ⍝ NB must not be localised
+      ns←⎕NS'dup' 'data'
+      is←#.ø ns           ⍝ Clone namespace
+      assert(42 42)≡is.(dup data)
+     
+      is←#.ø'TestIso.dup' 'TestIso.data' ⍝ Create is from name list
+      assert(42 42)≡is.(dup data)
+     
+      is←#.ø(+2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'),'ws\dfns.dws' ⍝ copy ws
+      assert 12≡≢is.queens 8
      
       z←'Basic Tests Completed'
     ∇

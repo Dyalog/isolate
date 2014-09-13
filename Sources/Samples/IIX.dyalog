@@ -2,7 +2,7 @@
 ⍝ Parallel Extensions.
         
     ∇ r←{left}(fns PEACH iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled
-    ⍝ IÏ using persistent Isolates:
+    ⍝ IÏ using queueing on persistent Isolates:
     ⍝
     ⍝ iss is a list of refs to pre-existing isolates to use
     ⍝     or if scalar, processors×processes clones will be made
@@ -26,12 +26,15 @@
       :If 2=≡fns ⍝ We have a callback function
           (fn cb cblarg)←3↑fns,'' ''
           cblarg,←(0=≢cblarg)/'IIX.PEACH Progress - ',fn,' (',(⍕×/⍴right),')'
-          :If 0=⍴cb  ⍝ Default Progress Form
-              :If PEACHForm cblarg(≢iss)(×/⍴right)
-                  cb←'PEACHUpdate'
-              :EndIf
-          :EndIf ⍝ Default
-      :Else ⋄ fn←fns ⋄ cb←'⊣' ⋄ :EndIf
+      :Else ⍝ No callback function defined
+          fn←fns ⋄ (cb cblarg)←'' 'IIX.PEACH Progress'
+      :EndIf
+     
+      :If 0=⍴cb  ⍝ Default Progress Form
+          :If PEACHForm cblarg(≢iss)(×/⍴right)
+              cb←'PEACHUpdate'
+          :EndIf
+      :EndIf ⍝ Default
      
       callbk←⍎cb
      

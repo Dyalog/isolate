@@ -25,7 +25,7 @@
       :Else
           id←(⍳≢ports)+1+0⌈⌈/⊣/ss.procs
           ss.retry_limit←2⊣old←ss.retry_limit
-          pclts←id InitConnections addr ports ¯1
+          pclts←id InitConnections addr ports ¯1 ⍬
           ss.retry_limit←old
           :If m←0∊≢¨pclts ⋄ r←(4⊃msg),' ',addr,': ',⍕m/ports ⋄ :Return ⋄ :EndIf
           ss.procs⍪←id,0,(⊂addr),ports,⍪pclts
@@ -44,11 +44,14 @@
       {}DRC.Close⊃args ⍝ Paranoia, the bug is somewhere else, sorry!
       count←0
       :While 0≠⊃r←DRC.Clt args ⍝ Cannot connect
-          :If 1111=⊃r
+          :Select ⊃r
+          :Case 1106
+              ('ISOLATE: Unable to resolve or parse hostname: ',⍕args)⎕SIGNAL 11
+          :Case 1111
               {}⎕DL session.retry_interval×count+←1 ⍝ longer wait each time
           :Else
               ('ISOLATE: Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
-          :EndIf
+          :EndSelect
       :Until count≥session.retry_limit
     ∇
 
@@ -81,8 +84,9 @@
       :EndIf
     ∇
 
-    ∇ {r}←Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts
+    ∇ {r}←{allowremote}Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts;t
       r←⎕THIS.⎕IO←0
+      :If 0=⎕NC'allowremote' ⋄ allowremote←⍬ ⋄ :EndIf
       :If newSession''
           here.iSpace←here←⎕THIS
           z←here.(proxyClone←⎕NS'').⎕FX¨proxySpace.(⎕CR¨↓⎕NL 3)
@@ -91,18 +95,19 @@
           here.(signal←⎕SIGNAL/∘{(⊃⍬⍴⎕DM)⎕EN})
           z←setDefaults''
           op←options
-          z←getSet'debug'op.debug                 ⍝ on or off
+          z←getSet'debug'op.debug    ⍝ on or off
           :Trap trapErr''
               ##.DRC←here.DRC←getDRC op.drc
               z←DRC.Init ⍬
               z←DRC.SetProp'.' 'Protocol'(op.protocol)
-              ss.retry_limit←10      ⍝ How many retries
+              ss.retry_limit←30      ⍝ How many retries
               ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
               ss.orig←whoami''
               ss.homeport←7051
               ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
               ss.nextid←2⊃⎕AI                   ⍝ isolate id
               ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
+              ss.remoteclients←allowremote
               z←⎕TPUT ss.assockey←1+ss.callback ⍝ queue for assoc and procs
               ss.assoc←dix'proc iso busy'(3⍴⍬ ⍬)
               ss.procs←0 5⍴0 ⍬'' 0 ''
@@ -112,6 +117,12 @@
               :EndIf
      
               ss.started←sessionStart''               ⍝ last thing so we know
+     
+              :If ss.listen ⍝ set up list of acceptable client addresses
+                  t←↑{0=⊃p←DRC.GetProp ⍵'peeraddr':2↑1↓1⊃p ⋄ ⍬ ⍬}¨session.procs[;4]
+                  t[;0]←{⌽(1+⍵⍳':')↓⍵}∘⌽¨t[;0]
+                  ##.RPCServer.localaddrs←(⊂''),⊣⌸t
+              :EndIf
               r←1
           :Else
               signal''
@@ -119,14 +130,30 @@
       :EndIf
     ∇
 
-    ∇ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts
+    ∇ r←checkPortIsFree n;z
+     ⍝ Check that TCP port is currently free
+      :If r←0=⊃z←DRC.Srv'' ''n
+          z←DRC.Close 1⊃z
+      :EndIf
+    ∇
+
+    ∇ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts;procs;m
       (count limit)←0 3
-      maxws←' maxws=',⍕op.maxws
+      maxws←' MAXWS=',⍕op.maxws
       (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
       iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
-      iso,←' protocol=',op.protocol
+      iso,←' protocol=',op.protocol,' quiet=1'
       ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
       ports←ss.homeport+1+⍳op.(processors×processes)
+     
+      :Repeat
+          :If 0∊m←checkPortIsFree¨ports
+              ⎕←'*** Warning - isolate port(s) in use: ',(~m)/ports
+              ports←ports+1+⍴ports
+          :EndIf
+      :Until (∧/m)∨(⊃ports)>1+op.homeportmax
+      'ISOLATE: Unable to find free ports'⎕SIGNAL(∧/m)↓11
+     
       pids←(1⊃⎕AI)+⍳⍴ports
      
       :Repeat
@@ -134,46 +161,60 @@
           procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',(⍕⍵),' APLCORENAME=',(⍕⍵),' ',iso}¨ports
           procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
      
-          pclts←pids InitConnections(ss.orig)ports(ss.callback)
+          pclts←pids InitConnections ss.orig ports ss.callback ss.remoteclients
      
           :If ~ok←~∨/0∊≢¨pclts ⍝ at least one failed
               ⎕←'ISOLATE: Unable to connect to started processes (attempt ',(⍕count),' of ',(⍕limit),')'
               ⎕DL 5 ⋄ {}procs.Kill ⋄ ⎕DL 5
               ports+←1+op.(processors×processes)
           :EndIf
-      :Until ok∨count>limit
+      :Until ok∨count≥limit
       'ISOLATE: Unable to initialise isolate processes'⎕SIGNAL ok↓11
       r←pids,procs,(⊂ss.orig),ports,⍪pclts
     ∇
 
-    ∇ r←pids InitConnections(addr ports id);i
+    ∇ r←pids InitConnections(addr ports id remote);i
+     ⍝ Establish connections to all new processes
       r←(≢pids)⍴⊂''
       :For i :In ⍳≢pids
           :Trap 0
-              (i⊃r)←(i⊃pids)InitConnection addr(i⊃ports)id
+              (i⊃r)←(i⊃pids)InitConnection addr(i⊃ports)id remote
           :EndTrap
       :EndFor
     ∇
 
-    ∇ r←pid InitConnection(addr port id);z;ok
+    ∇ r←pid InitConnection(addr port id remote);z;ok
+     ⍝ Establish connection to new process,
+     ⍝ Verify it's identity and configure it
+     ⍝ Return CONGA client name or '' on failure
+     
       ok←0
       :If 0≠⊃z←DRCClt('PROC',⍕pid)addr port
           ('ISOLATE: Unable to connect to ',addr,':',(⍕port),':',,⍕z)⎕SIGNAL 11
       :Else ⍝ Connection made
           r←1⊃z
-          :If 0=⊃z←DRC.Send r('#.isolate.ynys.execute'('' 'identify'))
-          :AndIf 0=⊃z←DRC.Wait r 20000
-              :If 0 'Receive'≡z[0 2]
-                  :If ~ok←id∊¯1,3 1 1⊃z
-                      r←'' ⍝ We got hold of someone elses server, don't use it
-                  :EndIf
-              :EndIf
-          :Else
-              {}DRC.Close r
-              ('ISOLATE: New process did not respond to handshake:',,⍕z)⎕SIGNAL 11
+          ok←id∊¯1,1⊃SendWait r('#.isolate.ynys.execute'('' 'identify'))
+          :If id≠¯1 ⍝ Only set remote access if we started the process
+              ok←(0=⍴remote)∨remote≡SendWait r('AllowRemoteAccess'remote)
+          :EndIf
+     
+          :If ~ok
+              r←''⊣DRC.Close r
           :EndIf
       :EndIf
-      :If ~ok ⋄ {}DRC.Close r ⋄ :EndIf
+    ∇
+
+    ∇ r←SendWait(r cmd);z
+     ⍝ Used by InitConnection for first 2 transactions with newly started process
+      :If 0=⊃z←DRC.Send r cmd
+      :AndIf 0=⊃z←DRC.Wait r 30000
+          :If 0 'Receive'≡z[0 2]
+              r←3 1⊃z
+          :EndIf
+      :Else
+          {}DRC.Close r
+          ('ISOLATE: New process did not respond to handshake:',,⍕z)⎕SIGNAL 11
+      :EndIf
     ∇
 
       InternalState←{⍺←⊢
@@ -217,12 +258,12 @@
           msg←messages'⍝- ' ⍝
           ~newSession'':(0⊃msg),' ',options.status
           z←Config'status' 'server'
-          z←Init 1
+          allowremote←validateRemoteFilters ⍵
+     
+          z←allowremote Init 1
      
           address←##.APLProcess.MyDNSName
-     
-          addresses←3↑⍤1↑1⊃DRC.GetProp'.' 'lookup'address 80
-          addresses[;1]←¯3↓¨addresses[;1]
+          addresses←##.RPCServer.DNSLookup address
           addresses←addresses[⍋↑addresses[;2];0 1]
           addresses←addresses[;0]{⊂⍺ ⍵}⌸0 1↓addresses
      
@@ -244,6 +285,13 @@
 ⍝- ' (
 ⍝- -⎕IO-⍳
 ⍝- )
+      }
+    
+      validateRemoteFilters←{
+          0=⍴⍵:⍵ ⍝ Validate filters and return nested vector
+          z←{1↓¨(','=⍵)⊂⍵}',',⍵~' ' ⍝ Split on comma
+          0∊(3↑¨z)∊'ip=' 'IP=':'INVALID FILTERS'⎕SIGNAL 11
+          z
       }
 
     ∇ x qsignal y
@@ -273,7 +321,7 @@
           (0∊⍴)⍵:⍺.⎕NS''                                         ⍝ empty
           (0=≡)and{9=⎕NC'⍵'}⍵:⍵                                  ⍝ ns
           (1=≡)and(''≡0⍴⊢)⍵:checkWs ⍵
-          (2=≡)and(''≡0⍴⊃)⍵:⍺.⎕NS↑⍵                              ⍝ nl
+          (2=≡)and(''≡0⍴⊃)nl←,¨⍵:⍺.⎕NS↑nl                              ⍝ nl
           ⎕SIGNAL 11
 ⍝ ⍺ caller
 ⍝ ⍵ arg to new - empty | space | namelist | string
@@ -454,7 +502,7 @@
 ⍝   creates list that encodes syntax and includes arguments
       }
 
-    ∇ r←execute(name data);z;n;space;zz
+    ∇ r←execute(name data);z;n;space;zz;wsid;⎕TRAP
       :If name≡''
           :Select data
           :Case 'identify' ⍝ return isoid
@@ -463,10 +511,21 @@
               r←11('ISOLATE: Unknown command'data)
           :EndSelect
       :Else
-          space←#.⍎name
+          :Trap 6 ⋄ space←#.⍎name
+          :Else ⍝ Seems the isolate ns was not created
+              r←6('Isolate initialization failed - check workspace name' '' '^')
+              →0
+          :EndTrap
+     
           :Hold 'ISO_',name
-              :If {0::0 ⋄ ##.onerror≡⍵}'debug' ⋄ ⎕TRAP←0 'S' ⋄ :EndIf
-              r←space decode 5↑data
+              :If {0::0 ⋄ ##.onerror≡⍵}'debug'
+                  wsid←⎕WSID
+                  ⎕TRAP←0 'E' '⎕WSID←''ISOLATE - '',{(100⌊⍴⍵)↑⍵},⍕2↑⎕DM ⋄ ⎕←↑⎕DM ⋄ ⎕←''To resume:'',(⎕UCS 13),''      →⎕LC'''
+                  r←space decode 5↑data
+                  ⎕WSID←wsid ⋄ z←{0::0 ⋄ 2022⌶⍵}0 ⍝ Flush session caption
+              :Else
+                  r←space decode 5↑data
+              :EndIf
      
               :If 0=⎕NC'session' ⍝ In the isolate
                   :Trap 6
@@ -922,7 +981,7 @@
       :EndIf
     ∇
 
-    ∇ r←Reset kill;iso;clt;ok;local;count
+    ∇ r←Reset kill;iso;clt;ok;local;count;z
       r←''
       :If 2=⎕NC'session.assoc.iso'
           r,←(⍕≢session.assoc.iso),' isolates, '
@@ -940,16 +999,19 @@
           count←0
           :If 0≠≢local←session.((procs[;1]≠0)/procs[;1]) ⍝ local processes
      
-              :If 'server'≡options.status
-                  r←r,' (service processes killed), ' ⋄ local.Kill
-              :Else
-                  :While ~ok←∧/local.HasExited
-                      ⎕DL session.retry_interval×count←count+1
-                  :Until count>session.retry_limit
-                  r←r,(~ok)/' (service processes have not died), '
-              :EndIf
+              :While ~ok←∧/local.HasExited
+                  ⎕DL session.retry_interval×count←count+1
+              :Until count>session.retry_limit
      
+              :If ~ok
+                  :If 'server'≡options.status
+                      r←r,' (service processes killed), ' ⋄ z←local.Kill
+                  :Else
+                      r←r,' (service processes have not died), '
+                  :EndIf
+              :EndIf
           :EndIf
+     
       :EndIf
      
       :If 2=⎕NC'session.listeningtid'
@@ -990,7 +1052,7 @@
               spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
               spaces.runtime←tod'B' 1                   ⍝ use runtime version
               spaces.protocol←tod'S' 'IPv4' 'IPv6' 'IP' ⍝ default to IPv4
-              spaces.maxws←tod'S'(2 ⎕NQ'.' 'GetEnvironment' 'maxws')
+              spaces.maxws←tod'S'(2 ⎕NQ'.' 'GetEnvironment' 'MAXWS')
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
@@ -1164,6 +1226,7 @@
               0>⎕NC ⍵:⊢0 0                           ⍝ primitive operators
               expr←'((2⍴⎕nc∘⊂,⎕at),''',⍵,''')'       ⍝ then what is it?
               (rc res)←iSend iD.tgt(0 expr)          ⍝ from the horse's mouth
+              rc≠0:(,⍕res)iSpace.qsignal rc          ⍝ lost connection?
               (nc at)←res                            ⍝ ⎕NC ⎕AT - rc?
               nc∊3.2 3.3:⊢3 52                       ⍝ 3,32+16+4 res ambi omega
               c←⌊nc                                  ⍝ class

@@ -112,7 +112,7 @@
           chunked chunk buffer chunklength←0 '' '' 0
           done data datalen header←0 ⍬ 0(0 ⍬)
           :Repeat
-              :If ~done←0≠1⊃wr←DRC.Wait cmd 5000            ⍝ Wait up to 5 secs
+              :If ~done←0≠1⊃wr←DRC.Wait cmd 10000           ⍝ Wait up to 5 secs
                   :If wr[3]∊'Block' 'BlockLast'             ⍝ If we got some data
                       :If chunked
                           chunk←4⊃wr

@@ -1,6 +1,5 @@
 ﻿:Class APLProcess
     ⍝ Start (and eventually dispose of) a Process
-    ⍝ Based on Parallel workspace
 
     (⎕IO ⎕ML)←1 1
 
@@ -9,6 +8,8 @@
     :field Public Exe←''
     :Field Public Proc←⎕NS ''
     :Field Public onExit←''
+
+    :Field Public Shared RIDE_CONNECT←'' ⍝ Allow debugging
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -29,6 +30,10 @@
 
     ∇ Start(ws args rt);psi;pid
       (Ws Args)←ws args
+      :If 0≠⍴RIDE_CONNECT
+          args←args,' RIDE_CONNECT=',RIDE_CONNECT
+      :EndIf
+     
       :If ~0 2∊⍨10|⎕DR rt ⍝ if rt is character, it's the executable name
           Exe←(RunTime⍣rt)GetCurrentExecutable
       :Else
@@ -96,8 +101,7 @@
               r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
           :EndIf
       :Else
-⍝          t←⊃_SH'ps -p ',(⍕GetCurrentProcessId),' h -o cmd'
-          t←⊃⊢2 ⎕NQ '.' 'GetCommandLineArgs'
+          t←⊃_PS'-o args -p ',⍕GetCurrentProcessId ⍝ AWS
           :If '"'''∊⍨⊃t  ⍝ if command begins with ' or "
               r←{⍵/⍨{∧\⍵∨≠\⍵}⍵=⊃⍵}t
           :Else
@@ -188,7 +192,7 @@
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
       ⍝ so, the best we can do at this point is identify processes that we tagged with ppid=
-          mask←' '∧.=procs←' ',↑_SH'ps -eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName
+          mask←' '∧.=procs←' ',↑_PS'-eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName,' | grep -v grep' ⍝ AWS
           mask∧←2≥+\mask
           procs←↓¨mask⊂procs
           mask←me≠tonum¨1⊃procs ⍝ remove my task
@@ -203,7 +207,7 @@
       :EndIf
     ∇
 
-    ∇ r←Kill;res
+    ∇ r←Kill
       :Access public instance
       r←0
       :Trap 0
@@ -211,11 +215,11 @@
               Proc.Kill
               ⎕DL 0.2
           :Else
-              {}1 _SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
+              {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt
               {}⎕DL 2 ⍝ wait a couple seconds for it to react
-              :If ~Proc.HasExited←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
-                  Proc.HasExited∨←∨/'<defunct>'⍷⊃,/res
-              :EndIf
+              {}UNIXIssueKill 9 Proc.Id ⍝ issue strong interrupt
+              {}⎕DL 2 ⍝ wait a couple seconds for it to react
+              Proc.HasExited←~UNIXIsRunning Proc.Id
           :EndIf
           r←Proc.HasExited
       :EndTrap
@@ -231,9 +235,9 @@
                       Proc.Kill
                       ⎕DL 0.2
                   :Else
-                      {}1 _SH'kill -3 ',⍕Proc.Id ⍝ issue strong interrupt
+                      {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt AWS
                       {}⎕DL 2 ⍝ wait a couple seconds for it to react
-                      :If ~Proc.HasExited←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
+                      :If ~Proc.HasExited←0∊⍴res←UNIXGetShortCmd Proc.Id       ⍝ AWS
                           Proc.HasExited∨←∨/'<defunct>'⍷⊃,/res
                       :EndIf
                   :EndIf
@@ -242,11 +246,9 @@
           :Until Proc.HasExited∨MAX≤0
           r←Proc.HasExited
       :ElseIf 2=⎕NC'Proc' ⍝ just a process id?
-          {}1 _SH'kill -9 ',,⍕Proc
+          {}UNIXIssueKill 9 Proc.Id
           {}⎕DL 2
-          :If ~r←0∊⍴res←_SH'ps h -p ',(,⍕Proc),' -o cmd'
-              r∨←∨/'<defunct>'⍷⊃,/res
-          :EndIf
+          r←~UNIXIsRunning Proc.Id  ⍝ AWS
       :EndIf
     ∇
 
@@ -255,9 +257,7 @@
       :If IsWin
           r←{0::⍵ ⋄ Proc.HasExited}1
       :Else
-          :If ~r←0∊⍴res←_SH'ps h -p ',(⍕Proc.Id),' -o cmd'
-              r∨←∨/'<defunct>'⍷⊃,/res
-          :EndIf
+          r←~UNIXIsRunning Proc.Id ⍝ AWS
       :EndIf
     ∇
 
@@ -287,8 +287,7 @@
               :EndTrap
           :EndIf
       :Else
-          →0↓⍨r←~0∊⍴res←_SH'ps h -p ',(⍕pid),' -o cmd'
-          r>←∨/'<defunct>'⍷⊃,/res
+          r←UNIXIsRunning pid
       :EndIf
     ∇
 
@@ -307,8 +306,30 @@
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
       :Else
-          {}1 _SH'kill -3 ',⍕pid ⍝ issue strong interrupt
+          {}UNIXIssueKill 3 pid ⍝ issue strong interrupt
       :EndIf
+    ∇
+
+    ∇ r←UNIXIsRunning pid;txt
+    ⍝ Return 1 if the process is in the process table and is not a defunct
+      r←0
+      →(r←' '∨.≠txt←UNIXGetShortCmd pid)↓0
+      r←~∨/'<defunct>'⍷txt
+    ∇
+
+    ∇ {r}←UNIXIssueKill(signal pid)
+      signal pid←⍕¨signal pid
+      r←⎕SH'kill -',signal,' ',pid,' >/dev/null 2>&1 ; echo $?'
+    ∇
+
+    ∇ r←UNIXGetShortCmd pid
+      ⍝ Retrieve sort form of cmd used to start process <pid>
+      r←⊃1↓⎕SH'ps -o cmd -p ',(⍕pid),' 2>/dev/null ; exit 0'
+    ∇
+
+    ∇ r←_PS cmd;ps
+      ps←'ps ',⍨('AIX'≡3↑⊃'.'⎕WG'APLVersion')/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
+      r←1↓⎕SH ps,cmd,' 2>/dev/null; exit 0'                  ⍝ Remove header line
     ∇
 
     ∇ r←{quietly}_SH cmd
@@ -371,7 +392,7 @@
 ⍝ ComputerNamePhysicalDnsFullyQualified = 7 <<<
 ⍝ ComputerNameMax = 8
       :Else
-          r←⊃_SH'hostname -f'
+          r←⊃_SH'hostname'
       :EndIf
     ∇
 
