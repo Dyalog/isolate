@@ -4,7 +4,7 @@
     (⎕IO ⎕ML)←0 1
 
     tracelog←{⎕←((1⊃⎕SI),'[',(⍕1⊃⎕LC),']') ⍵}
-    ⍝tracelog←{}        ⍝ uncomment this line to disable all logging
+    ⍝tracelog←{}       ⍝ uncomment this line to disable all logging
 
     ∇ r←AddServer w;msg;addr;ports;z;ss;id;pclts;m;old;local
       msg←messages'⍝- '
@@ -83,7 +83,7 @@
           :EndIf
       :EndIf
     ∇
-
+ 
     ∇ {r}←{allowremote}Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts;t
       r←⎕THIS.⎕IO←0
       :If 0=⎕NC'allowremote' ⋄ allowremote←⍬ ⋄ :EndIf
@@ -98,9 +98,11 @@
           z←getSet'debug'op.debug    ⍝ on or off
           :Trap trapErr''
               ##.DRC←here.DRC←getDRC op.drc
-              z←DRC.Init ⍬
+              :If ~(⊃z←DRC.Init ⍬)∊0
+                  ('CONGA INIT FAILED: ',,⍕z)⎕SIGNAL 11
+              :EndIf
               z←DRC.SetProp'.' 'Protocol'(op.protocol)
-              ss.retry_limit←30      ⍝ How many retries
+              ss.retry_limit←99      ⍝ How many retries
               ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
               ss.orig←whoami''
               ss.homeport←7051
@@ -143,7 +145,7 @@
       (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
       iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
       iso,←' protocol=',op.protocol,' quiet=1'
-      ws←1⌽'""',checkWs addWSpath ws          ⍝ if no path ('\/')
+      :If ws∨.≠' ' ⋄ ws←1⌽'""',checkWs addWSpath ws ⋄ :EndIf ⍝ if no path ('\/')
       ports←ss.homeport+1+⍳op.(processors×processes)
      
       :Repeat
@@ -302,7 +304,7 @@
 
       addWSpath←{⍺←⊢
           ∨/'/\'∊ws←⍵:⊢ws       ⍝ assume extant path is good
-          dir←2 ⎕NQ'.' 'GetEnvironment' 'DYALOG'
+          dir←##.RPCServer.GetEnv'DYALOG'
           sep←⊃'/\'∩dir
           dir,←sep~⊢/dir        ⍝ append sep if needs
           dir,'ws',sep,ws       ⍝ WS folder
@@ -506,7 +508,7 @@
       :If name≡''
           :Select data
           :Case 'identify' ⍝ return isoid
-              r←0(⊃1⊃⎕VFI+2 ⎕NQ'.' 'GetEnvironment' 'isoid')
+              r←0(⊃1⊃⎕VFI+##.RPCServer.GetEnv'isoid')
           :Else
               r←11('ISOLATE: Unknown command'data)
           :EndSelect
@@ -655,7 +657,7 @@
      
           (ws db li)←'workspace' 'debug' 'listen'∊⊂nam ⍝ special
           0::(⊃⎕DMX.DM)⎕SIGNAL ⎕DMX.EN                         ⍝
-          z←checkWs⍣ws⊢new                             ⍝
+          z←checkWs⍣(ws∧new≢'')⊢new                            ⍝
           z←{⎕THIS.(trapErr←(⍵↓0)∘⊣) ⋄ 0}⍣db⊢new       ⍝
           z←localServer⍣li⊢new                         ⍝ cases
           old⊣nam options.{⍎⍺,'←⍵'}new
@@ -671,10 +673,10 @@
 
       isoStart←{⍺←⊢
      
-          ##.onerror←2 ⎕NQ'.' 'GetEnvironment' 'onerror'
-          protocol←2 ⎕NQ'.' 'GetEnvironment' 'protocol'
+          ##.onerror←##.RPCServer.GetEnv'onerror'
+          protocol←##.RPCServer.GetEnv'protocol'
           iso←'isolate'
-          parm←2 ⎕NQ'.' 'GetEnvironment'iso
+          parm←##.RPCServer.GetEnv iso
           parm≢iso:shy←1
           msgbox←{
               last←{⍺ ⍺⍺[(≢⍴⍵)-~⎕IO]⍵}
@@ -981,19 +983,21 @@
       :EndIf
     ∇
 
-    ∇ r←Reset kill;iso;clt;ok;local;count;z
+    ∇ r←Reset kill;iso;clt;ok;local;count;z;close
       r←''
+      close←{0::'' ⋄ DRC.Close ⍵} ⍝ try to close, ignore all errors
+     
       :If 2=⎕NC'session.assoc.iso'
           r,←(⍕≢session.assoc.iso),' isolates, '
           :For iso :In session.assoc.iso ⍝ For each known isolate
-              {}DRC.Close'Iso',⍕iso
+              {}close'Iso',⍕iso
           :EndFor
       :EndIf
      
       :If 2=⎕NC'session.procs'
           r,←(⍕≢session.procs),' processes, '
           :For clt :In session.procs[;4] ⍝ For each process
-              {}DRC.Close clt
+              {}close clt
           :EndFor
      
           count←0
@@ -1024,7 +1028,6 @@
       :EndIf
       ⎕EX'session'
     ∇
-
       sessionStart←{⍺←⊢
           24 60 60 1000{(dateNo ⍵)-(⍺-⍺⍺⊥3↓⍵)÷×/⍺⍺}/(2⊃⎕AI)⎕TS
 ⍝ diff twixt ⎕ts and ⎕ai
@@ -1052,7 +1055,7 @@
               spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
               spaces.runtime←tod'B' 1                   ⍝ use runtime version
               spaces.protocol←tod'S' 'IPv4' 'IPv6' 'IP' ⍝ default to IPv4
-              spaces.maxws←tod'S'(2 ⎕NQ'.' 'GetEnvironment' 'MAXWS')
+              spaces.maxws←tod'S'(##.RPCServer.GetEnv'MAXWS')
               spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
               spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
               1:1
@@ -1164,7 +1167,8 @@
 
         (⎕IO ⎕ML)←0 1
 
-          iEvaluate←{⍺←⊢
+          iEvaluate←{z←{0::0 ⋄ 2503⌶⍵}3 ⍝ Thread and its children are un-interruptible
+              ⍺←⊢
               data←⍺ iSpace.encode ⍵
               ID←iD.numid
               ss←{iSpace.session}⍣home⊢home←2∊⎕NC'iSpace.session.started' ⍝ is this true ?
@@ -1176,7 +1180,7 @@
               ~home:{rc=0:⍵ ⋄ ⍎'#.Iso',(⍕ID),'error←rc ⍵' ⋄ ⎕SIGNAL rc}res   ⍝ call back? then we're done
               z←ss.assoc.{((iso⍳⍵)⊃busy)←0}ID
               ok:⊢res                           ⍝ spiffing!
-              (,⍕(⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res)iSpace.qsignal rc
+              (,⍕(⍕rc),': ',(0⊃res),{(⍵∨.≠' ')/': ',⍵}1⊃res,'' '')iSpace.qsignal rc
    ⍝ execute expression supplied to isolate
           }
 

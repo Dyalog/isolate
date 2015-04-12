@@ -6,6 +6,17 @@
     Commands←Errors←CPU←0
     ß←{} ⍝ stub "fake" function to allow stats reporting
 
+    ∇ r←GetEnv name;args;z
+     ⍝ Look for environment settings, allowing Command Line overrides
+     ⍝ Added to support isolates as bound executables under Windows
+     
+      :If 1=⍴z←name{(((1+≢⍺)↑¨⍵)∊⊂⍺,'=')/⍵}2 ⎕NQ'.' 'GetCommandLineArgs'
+          r←(1+⍴name)↓⊃z
+      :Else
+          r←2 ⎕NQ'.' 'GetEnvironment'name
+      :EndIf
+    ∇
+ 
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
     ⍝ Params should include -Load=
@@ -33,7 +44,7 @@
       r[;2]←((-(⍳∘':'⌽)¨r[;2]))↓¨r[;2]
     ∇
 
-    ∇ Boot;name;port;certfile;keyfile;sslflags;num;getenv;secure;load;l;folder;z;autoshut;quiet;allowremote;commasep;localaddrs
+    ∇ Boot;name;port;certfile;keyfile;sslflags;num;secure;load;l;folder;z;autoshut;quiet;allowremote;commasep;localaddrs
     ⍝ Bootstrap an RPC-Server using the following command line parameters
     ⍝ -Port=nnnn
     ⍝ -Load=.dyalog files to load before start
@@ -47,14 +58,13 @@
     ⍝ -ClientAddr=limit to connections from given site
      
       folder←{(1-⌊/(⌽⍵)⍳'/\')↓⍵}⎕WSID
-      getenv←{2 ⎕NQ'.' 'GetEnvironment'⍵}
       num←{⊃2⊃⎕VFI ⍵}
       sslflags←32+64 ⍝ Accept without Validating, RequestClientCertificate
      
       name←'RPCSRV'
-      port←num getenv'Port'
-      autoshut←num getenv'AutoShut' ⍝ Shut down if 1st connection is lost
-      quiet←num getenv'Quiet'       ⍝ Suppress diagnostic session output
+      port←num GetEnv'Port'
+      autoshut←num GetEnv'AutoShut' ⍝ Shut down if 1st connection is lost
+      quiet←num GetEnv'Quiet'       ⍝ Suppress diagnostic session output
       allowremote←''                ⍝ No remote access
      
       z←##.DRC.Init''
@@ -65,16 +75,16 @@
      
       ⎕←'local:' ⋄ ⎕←localaddrs
      
-      :If 0≠⍴load←getenv'Load'
+      :If 0≠⍴load←GetEnv'Load'
           load←{1↓¨(','=⍵)⊂⍵}',',load
           :For l :In load
               ⎕SE.SALT.Load folder,l,' -target=#'
           :EndFor
       :EndIf
      
-      :If secure←0≠⍴certfile←getenv'CertFile'
-          keyfile←getenv'KeyFile'
-          sslflags←num getenv'SSLFlags'
+      :If secure←0≠⍴certfile←GetEnv'CertFile'
+          keyfile←GetEnv'KeyFile'
+          sslflags←num GetEnv'SSLFlags'
           z←1 quiet autoshut Run name port('CertFile'certfile)('KeyFile'keyfile)('SSLFlags'sslflags)
       :Else
           z←1 quiet autoshut Run name port

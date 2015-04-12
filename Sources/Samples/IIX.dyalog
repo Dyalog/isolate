@@ -1,7 +1,7 @@
 ﻿:Namespace IIX
 ⍝ Parallel Extensions.
         
-    ∇ r←{left}(fns PEACH iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled
+    ∇ r←{left}(fns PEACH iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled;cbprovided
     ⍝ IÏ using queueing on persistent Isolates:
     ⍝
     ⍝ iss is a list of refs to pre-existing isolates to use
@@ -23,8 +23,9 @@
           iss←#.isolate.{New¨(×/Config¨'processors' 'processes')⍴⍵}iss
       :EndIf
      
-      :If 2=≡fns ⍝ We have a callback function
+      :If cbprovided←2=≡fns   ⍝ We MAY have a callback function
           (fn cb cblarg)←3↑fns,'' ''
+          cbprovided←cb∨.≠' ' ⍝ We DO have a callback function
           cblarg,←(0=≢cblarg)/'IIX.PEACH Progress - ',fn,' (',(⍕×/⍴right),')'
       :Else ⍝ No callback function defined
           fn←fns ⋄ (cb cblarg)←'' 'IIX.PEACH Progress'
@@ -36,7 +37,11 @@
           :EndIf
       :EndIf ⍝ Default
      
-      callbk←⍎cb
+      :If cbprovided
+          callbk←(⊃⎕RSI)⍎cb
+      :Else
+          callbk←⍎cb
+      :EndIf
      
       ni←≢iss
       shape←⍴right

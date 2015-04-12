@@ -18,8 +18,9 @@
  ⎕←⎕SE.SALT.Load'⍵\Sources\RPCServer -target=isolate -source=no -nolink'
  ⎕←⎕SE.SALT.Load'⍵\Sources\APLProcess -target=isolate -nolink'
 
- :If 0=⍴rev←⎕CMD'subwcrev "',path,'\"'
+ :If 0=⍴rev←{0::'' ⋄ ⎕CMD'subwcrev "',⍵,'\"'}path
      ⎕←'NB: Unable to get SVN revision information!'
+     ver←0
  :ElseIf 1≠⍴ver←('Updated to revision (\w+)'⎕S'\1')rev
  :OrIf 1∊'Local modifications found'⍷∊rev
      ⎕←'NB: SVN state is possibly not up-to-date - version information NOT added!'
@@ -31,7 +32,7 @@
  ⎕←isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
 
  ⎕LX←'#.isolate.ynys.isoStart ⍬'
- ⎕←'      )WSID ',⎕WSID←path,'Distribution\isolate.dws'
+ ⎕←'      )WSID ',⎕WSID←path,'Distribution/isolate.dws'
  ⎕←'⍝ Now:'
  ⎕←'      )erase Build BuildCovers Clear Dev Load'
  ⎕←'      )SAVE'

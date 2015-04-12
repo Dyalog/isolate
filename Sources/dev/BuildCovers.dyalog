@@ -31,4 +31,6 @@
      Failed←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Failed ⍵}
      Running←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Running ⍵}
 
+     ⎕FX'r←isSlave' 'r←''isolate''≡RPCServer.GetEnv ''isolate'''
+
  :EndWith
