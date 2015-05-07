@@ -345,7 +345,7 @@
       checkWs←{⍺←⊢
                                    ⍝ ⍵ IS a string
           z←⎕NS''
-          0::'WS NOT FOUND'⎕SIGNAL ⎕DMX.EN  ⍝ any error bar Value
+          0::'WS NOT FOUND'⎕SIGNAL 11  ⍝ any error bar Value
           6::⍵                          ⍝ value error implies copy ok
           z←{}'⎕IO'z.⎕CY ⍵              ⍝ force value error → return ⍵
 ⍝
@@ -824,7 +824,7 @@
 ⍝ Phil Last ⍝ 2007-06-22 22:57
       }
 
-    ∇ r←localServer r;srv;rc;z
+    ∇ r←localServer r;srv;rc;z;old
       →(0=⎕NC'session.homeport')⍴0
      
       :If r=0
@@ -846,6 +846,7 @@
      
           :If ~r ⍝ Already got a listening server
           :AndIf options.listen
+              old←{0::0 ⋄ 2503⌶⍵}3 ⍝ Make thread and children un-interruptible
               :Repeat
                   :If r←0=rc←⊃z←1 1 ##.RPCServer.Run srv session.homeport
                       session.listeningtid←1⊃z
@@ -853,6 +854,7 @@
                       session.homeport+←options.(1+processes×processors)
                   :EndIf
               :Until r∨session.homeport>options.homeportmax
+              old←{0::0 ⋄ 2503⌶⍵}old ⍝ Restore thread state
               ('Unable to create listener: ',,⍕z)⎕SIGNAL r↓11
           :EndIf
       :EndIf

@@ -230,7 +230,7 @@
                   ⎕←'Error in RPC.Wait: ',⍕wait
               :EndSelect
           :Else ⍝ got an interrupt
-              ⎕←((1002 1003⍳⎕EN)⊃'Soft' 'Hard' 'Unknown?'),' interrupt received, RPC Server shutting down'
+              ⎕←((1002 1003⍳⎕EN)⊃'Weak' 'Strong' 'Unknown?'),' interrupt received, RPC Server shutting down'
               done←1
           :EndTrap
       :EndWhile
