@@ -375,12 +375,12 @@
       :EndIf
     ∇
 
-    ∇ r←MyDNSName;GetComputerNameExW
+    ∇ r←MyDNSName;GCN
       :Access Public Shared
      
       :If IsWin
-          ⎕NA'I4 Kernel32|GetComputerNameExW U4 >0T =U4'
-          r←2⊃GetComputerNameExW 7 255 255
+          'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
+          r←2⊃GCN 7 255 255
           :Return
 ⍝ ComputerNameNetBIOS = 0
 ⍝ ComputerNameDnsHostname = 1
