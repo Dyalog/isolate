@@ -1,8 +1,8 @@
-﻿ Dev;z
- z←¯1↓⊃⎕NPARTS ⎕WSID
+﻿ Dev;root
+ root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
+
  ⎕←'      )clear'
- ⍝⎕←'      {⎕FIX ''file://'',⍵}¨⊃(⎕NINFO⍠1)''',z,'/Sources/Dev/*'''
- ⎕←'      ]load "',z,'/Sources/Dev/*"'
- ⎕←'      )wsid "',z,'/dev.dws"'
+ ⎕←'      ]load "',root,'/Sources/Dev/*"'
+ ⎕←'      )wsid "',root,'/dev.dws"'
  ⎕←'      ⎕LX←''Load'''
  ⎕←'      )save'

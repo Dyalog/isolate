@@ -1,4 +1,4 @@
-﻿ Build;file;ver;src;t;version;rev;path;root
+﻿ Build;file;ver;src;t;version;rev;path;root;buildver
 ⍝ Build v14.0 distribution workspace containing unsalted classes and namespaces
 ⍝ Updates to include ll namespace
 ⍝    Insert SVN revision number
@@ -9,17 +9,18 @@
  root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
  path←root,'/Sources/'
 
- :If '14.0'≢4↑2⊃'.'⎕WG'APLVersion'
-     ⎕←'*** WARNING - Production builds should be run using Dyalog 15.0 ***'
+ buildver←'14.0'
+ :If buildver≢(≢buildver)↑2⊃'.'⎕WG'APLVersion'
+     ⎕←'*** WARNING - Production builds should be run using Dyalog ',buildver,' ***'
  :EndIf
 
  'isolate'⎕NS'' ⋄ isolate.(⎕IO ⎕ML)←0 1
  BuildCovers
 
- ⎕SE.SALT.Load path,'isolate.ynys.dyalog -nolink'
- ⎕SE.SALT.Load path,'RPCServer.dyalog -nolink'
- ⎕SE.SALT.Load path,'APLProcess.dyalog -nolink'
- ⎕SE.SALT.Load path,'ll.dyalog -nolink'
+ ⎕SE.SALT.Load path,'isolate.ynys.dyalog -target=isolate -source=no'
+ ⎕SE.SALT.Load path,'RPCServer.dyalog -target=isolate -source=no'
+ ⎕SE.SALT.Load path,'APLProcess.dyalog -target=isolate -nolink'
+ ⎕SE.SALT.Load path,'ll.dyalog -source=no'
 
  :If 0=⍴rev←{0::'' ⋄ ⎕CMD ⎕←'subwcrev ',⍵,''}root
      ⎕←'NB: Unable to get SVN revision information!'
