@@ -47,7 +47,7 @@
           :Select ⊃r
           :Case 1106
               ('ISOLATE: Unable to resolve or parse hostname: ',⍕args)⎕SIGNAL 11
-          :CaseList 61 1111 ⍝ 61 happens under macOS if you are too quick
+          :CaseList 61 111 1111 10061 ⍝ Connection Refused is 61 on macOS, 10061 under Windows
               {}⎕DL session.retry_interval×count+←1 ⍝ longer wait each time
           :Else
               ('ISOLATE: Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
@@ -389,7 +389,7 @@
     ∇ r←connect(chrid host port data);count
       :If 0=⊃r←DRCClt chrid host port  ⍝ DRCClt will retry
       :AndIf 0=⊃r←DRC.Send chrid data  ⍝ on any
-      :AndIf 0=⊃r←DRC.Wait(1⊃r)20000   ⍝ error 
+      :AndIf 0=⊃r←DRC.Wait(1⊃r)20000   ⍝ error
       :AndIf 'Timeout'≢3⊃r             ⍝ eventmode timeout
       :Else
           {}DRC.Close chrid
