@@ -47,7 +47,7 @@
           :Select ⊃r
           :Case 1106
               ('ISOLATE: Unable to resolve or parse hostname: ',⍕args)⎕SIGNAL 11
-          :Case 1111
+          :CaseList 61 1111 ⍝ 61 happens under macOS if you are too quick
               {}⎕DL session.retry_interval×count+←1 ⍝ longer wait each time
           :Else
               ('ISOLATE: Unable to connect to isolate process: ',⍕args)⎕SIGNAL 11
