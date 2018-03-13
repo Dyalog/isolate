@@ -1,0 +1,13 @@
+﻿DyalogBuild: 0.1
+ID         : isolate, Version=1.1
+Description: isolate workspace for Dyalog v17.0
+Defaults   : (⎕IO ⎕ML ⎕WX)←1 1 3
+TARGET     : isolate.dws
+
+EXEC  : ⎕EX '#.ll' '#.isolate'
+
+NS    : Source/*.dyalog, Target=#
+
+NS    : Build/*.dyalog, Target=#
+EXEC  : #.Build
+EXEC  : ⎕EX prod/'Build' 'BuildCovers' ⍝ Cannot be done inside Build

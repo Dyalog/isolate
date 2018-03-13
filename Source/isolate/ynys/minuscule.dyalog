@@ -1,0 +1,4 @@
+﻿ minuscule←{⍺←⊢
+     ('abcdefghijklmnopqrstuvwxyz',,⍵)[(⎕A,,⍵)⍳⍵]
+⍝
+ }
