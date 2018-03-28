@@ -3,7 +3,7 @@
      protocol←##.RPCServer.GetEnv'protocol'
      iso←'isolate'
      parm←##.RPCServer.GetEnv iso
-     parm≢iso:shy←1
+     parm≢iso: Description
      msgbox←{
          last←{⍺ ⍺⍺[(≢⍴⍵)-~⎕IO]⍵}
          ctr←{(⌊0.5×⍺-⍨⊢/⍴⍵)⌽⍺↑last ⍵}

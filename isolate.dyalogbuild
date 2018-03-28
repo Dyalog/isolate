@@ -3,7 +3,7 @@ ID         : isolate, Version=1.1
 Description: isolate workspace for Dyalog v17.0
 Defaults   : (⎕IO ⎕ML ⎕WX)←1 1 3
 TARGET     : isolate.dws
-LX	: #.isolate.ynys.isoStart ⍬
+LX    : #.isolate.ynys.isoStart ⍬
 
 EXEC  : ⎕EX '#.ll' '#.isolate'
 
@@ -13,4 +13,4 @@ NS    : Source/ynys/*.dyalog, Target=#.isolate.ynys
 
 NS    : Build/*.dyalog, Target=#
 EXEC  : #.Build
-PROD  : ⎕EX 'Build'
+EXEC  : ⎕EX 'Build'
