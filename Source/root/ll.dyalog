@@ -1,5 +1,7 @@
 ﻿:Namespace ll
 ⍝ Parallel Extensions
+    
+    (⎕IO ⎕ML ⎕WX)←1 1 3
         
     Each←{⍺←⊢ ⋄ ⍺ (⍺⍺ EachX ⍬) ⍵}
        
