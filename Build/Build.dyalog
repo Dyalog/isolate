@@ -1,9 +1,10 @@
-﻿ Build;file;ver;src;t;version;rev;path;root;buildver
+﻿ r←Build;file;ver;src;t;version;rev;path;root;buildver
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in # and #.isolate (see function "BuildCovers")
 ⍝    Insert isolate.Version to include GIT version numbers
 
- ⎕TRAP←0 'S'
+ r←''
+ version←'1.1' ⍝ base version
  root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
 
  buildver←'16.0' ⍝ Use v16.0 or later to build
@@ -19,12 +20,6 @@
      ver←ver~' '
  :EndIf
 
- ver←version,'.',⍕1+2⊃⎕VFI⍕ver ⍝ Join base version and 1+SVN revision
+ ver←version,'.',⍕2⊃⎕VFI⍕ver ⍝ Join base version and git push count
  ⎕←'isolate.Version set to:'
  ⎕←isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
-
- ⎕LX←'#.isolate.ynys.isoStart ⍬'
- ⎕←'      )WSID ',⎕WSID←root,'/Distribution/isolate.dws'
- ⎕←'⍝ Now:'
- ⎕←'      )erase Build BuildCovers Clear Dev Load'
- ⎕←'      )SAVE'

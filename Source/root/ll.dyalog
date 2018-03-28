@@ -1,7 +1,9 @@
-﻿:Namespace IIX
-⍝ Parallel Extensions.
+﻿:Namespace ll
+⍝ Parallel Extensions
         
-    ∇ r←{left}(fns PEACH iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled;cbprovided
+    Each←{⍺←⊢ ⋄ ⍺ (⍺⍺ EachX ⍬) ⍵}
+       
+    ∇ r←{left}(fns EachX iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled;cbprovided;noIso;cr
     ⍝ IÏ using queueing on persistent Isolates:
     ⍝
     ⍝ iss is a list of refs to pre-existing isolates to use
@@ -18,7 +20,18 @@
           :EndIf
       :EndIf
      
-      :If 0=≢iss ⋄ iss←⊂'' ⋄ :EndIf
+      :If noIso←0=≢iss ⋄ iss←⊂'' ⋄ :EndIf ⍝ No isolate passed
+     
+      :If 3=⎕NC'fns'          ⍝ A real function?
+          :If 1=⍴⍴cr←⎕CR'fns' ⋄ fns←(⊃cr)''⊣⎕EX'fns' ⋄ ⍝ primitive?
+          :Else
+              :If noIso ⋄ iss←⎕NS'' ⋄ :EndIf
+              fn←⊃(,iss).⎕FX⊂⎕CR'fns'
+              fns←fn'' ''⊣⎕EX'fns'
+          :EndIf
+     
+      :EndIf
+     
       :If 0=⍴⍴iss ⍝ If scalar, clone
           iss←#.isolate.{New¨(×/Config¨'processors' 'processes')⍴⍵}iss
       :EndIf
@@ -26,9 +39,9 @@
       :If cbprovided←2=≡fns   ⍝ We MAY have a callback function
           (fn cb cblarg)←3↑fns,'' ''
           cbprovided←cb∨.≠' ' ⍝ We DO have a callback function
-          cblarg,←(0=≢cblarg)/'IIX.PEACH Progress - ',fn,' (',(⍕×/⍴right),')'
+          cblarg,←(0=≢cblarg)/'ll.Each Progress - ',fn,' (',(⍕×/⍴right),')'
       :Else ⍝ No callback function defined
-          fn←fns ⋄ (cb cblarg)←'' 'IIX.PEACH Progress'
+          fn←fns ⋄ (cb cblarg)←'' 'll.Each Progress'
       :EndIf
      
       :If 0=⍴cb  ⍝ Default Progress Form
@@ -76,7 +89,7 @@
       :Else ⋄ →r←0 ⍝ Unable to create a form
       :EndTrap
       PF.texts←PF.bars←(1+nprocs)⍴PF
-      labels←({'Isolate ',⍕⍵}¨⍳nprocs),⊂'Started'
+      labels←({'Iso #',⍕⍵}¨⍳nprocs),⊂'Total'
      
       :For p :In ⍳1+nprocs
           pos←10+25×p-1

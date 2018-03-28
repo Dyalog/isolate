@@ -1,5 +1,4 @@
 ﻿ isoStart←{⍺←⊢
-
      ##.onerror←##.RPCServer.GetEnv'onerror'
      protocol←##.RPCServer.GetEnv'protocol'
      iso←'isolate'

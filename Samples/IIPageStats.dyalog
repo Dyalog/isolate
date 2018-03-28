@@ -1,5 +1,5 @@
 ﻿:Namespace IIPageStats
-⍝ Future/Isolate code sample, using #.IIX.PEACH    
+⍝ Future/Isolate code sample, using #.ll.EachX    
 ⍝   Report 'al' 
 ⍝   ... to get a letter frequency count for home pages of newspapers in Alabama
 
@@ -14,7 +14,7 @@
      
       pages←PapersInState state
       cap←'Processing ',(⍕≢pages),' major papers in state "',state,'"'
-      freq←('CountPageChars' ''cap #.IIX.PEACH iss)pages
+      freq←('CountPageChars' ''cap #.ll.EachX iss)pages
       freq←⊃+/freq
       freq←(26↑alphabet),⍪+⌿2 26⍴freq
       freq←freq[⍒freq[;2];]
