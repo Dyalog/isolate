@@ -1,0 +1,10 @@
+﻿DyalogTest : 0.1
+ID         : Isolate Tests
+Description: Put Isolates through their paces
+
+Setup   : setup_runtime setup_devt
+Teardown: teardown
+Test    : test_basic
+Test    : test_syntax
+Test    : test_errors
+Test    : test_callbacks
