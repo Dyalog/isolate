@@ -4,7 +4,13 @@
     Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in
     StartTime←⎕TS
     Commands←Errors←CPU←0
-    ß←{} ⍝ stub "fake" function to allow stats reporting
+    ß←{} ⍝ stub "fake" function to allow stats reporting 
+    DEBUG←0 ⍝ Set to 1 to get diagnostic messages
+    
+    ∇ r←Log text
+      →DEBUG↓0
+      ⎕←text
+    ∇
 
     ∇ r←GetEnv name;args;z
      ⍝ Look for environment settings, allowing Command Line overrides
@@ -67,15 +73,13 @@
       quiet←num GetEnv'Quiet'       ⍝ Suppress diagnostic session output
       allowremote←GetEnv 'AllowRemote' ⍝ Remote access 
       allowremote←(0≠≢allowremote)/{1↓¨(⍵=',')⊂⍵}',',allowremote 
-     
+      
       z←##.DRC.Init''
       localaddrs←⊃⍪/{0::0 3⍴⊂⍬ ⋄ DNSLookup ⍵}¨'' 'localhost' ⍝ Find all local addresses
       :If 0=≢localaddrs ⍝ /// paranoia: the above SHOULD work
           localaddrs←1 3⍴'IPv4' '127.0.0.1'(127 0 0 1)
       :EndIf
-     
-      ⎕←'local:' ⋄ ⎕←localaddrs
-     
+          
       :If 0≠⍴load←GetEnv'Load'
           load←{1↓¨(','=⍵)⊂⍵}',',load
           :For l :In load
@@ -91,7 +95,7 @@
           z←1 quiet autoshut Run name port
       :EndIf
      
-      :If 0≠1⊃z ⋄ ⎕←z ⋄ ⎕DL 10 ⋄ :EndIf ⍝ /// Pop up? Log?
+      :If 0≠1⊃z ⋄ Log z ⋄ ⎕DL 10 ⋄ :EndIf ⍝ /// Pop up? Log?
      
       :While ##.DRC.Exists name
           ⎕DL 10
@@ -111,9 +115,9 @@
       r←filters
      
       :If 0=⍴allowremote←r
-          ⎕←'Local access only'
+          Log 'Local access only'
       :Else
-          ⎕←'Remote access allowed for ',,⍕filters
+          Log 'Remote access allowed for ',,⍕filters
       :EndIf
     ∇
 
@@ -139,9 +143,9 @@
       :EndTrap
     ∇
 
-    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid;addr;ok;i;filter;first
-      ⍝ Run a Simple RPC Server        
-      
+    ∇ r←{start}Run args;sink;done;data;event;obj;rc;wait;z;cmd;name;port;protocol;srvparams;msg;rt;quiet;autoshut;tid;addr;ok;i;filter;first;⎕TRAP
+      ⍝ Run a Simple RPC Server
+     
       (name port)←2↑args
       srvparams←2↓args
      
@@ -178,8 +182,8 @@
               :Case 0
                   :Select event
                   :Case 'Error'
-                      ⍪quiet↓⊂'Error ',(⍕data),' on ',obj
-                      :If ~done∨←name≡obj ⍝ Error on the listener itself?
+                      ⍪quiet↓⊂'Error ',(⍕data),' on ',obj      
+                      :If ~done∨←(⊂obj)∊name first ⍝ Error on the listener or 1st connection?
                           {}##.DRC.Close obj ⍝ Close connection in error
                       :EndIf
      
@@ -216,8 +220,8 @@
                           :EndFor
      
                       :AndIf ~ok ⍝ Still not OK
-                          ⎕←'Connection refused from: ',addr
-                          ⎕←'Filters: ', (allowremote)
+                          Log 'Connection refused from: ',addr
+                          Log 'Filters: ' allowremote
                           {}##.DRC.Close obj ⍝ 'bye
                       :EndIf
                   
