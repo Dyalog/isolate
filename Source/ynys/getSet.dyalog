@@ -16,9 +16,11 @@
 ⍝ then two
      and←{⍺⍺⊣⍵:⍵⍵⊣⍵ ⋄ 0}
      (range type)←(domains types).⍎⊂nam
-     s b i r←'SBIR'=type
+     (s b i r a)←'SBIRA'=type
      msg←nam,' should be a',⍕s b i r/'string' 'boolean' 'integer' 'ref'
-     ok←b and(⊢≡1=⊢)new
+
+     ok←a ⍝ Any array
+     ok←ok∨b and(⊢≡1=⊢)new
      ok←ok∨i and{0=1↑0⍴⍵}and(⊢=⌊)new
      ok←ok∨s and{''≡0⍴⍵}new
      ok←ok∨r and{9=⎕NC'⍵'}new

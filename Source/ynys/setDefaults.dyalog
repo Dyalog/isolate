@@ -15,7 +15,7 @@
          spaces.isolates←tod'I' 99                 ⍝ per process
          spaces.homeport←tod'I' 7051               ⍝ first port to attempt to use
          spaces.homeportmax←tod'I' 7151            ⍝ highest port allowed
-         spaces.runtime←tod'B' 1                   ⍝ use runtime version
+         spaces.runtime←tod'A' 1                   ⍝ use runtime version
          spaces.protocol←tod'S' 'IPv4' 'IPv6' 'IP' ⍝ default to IPv4
          spaces.maxws←tod'S'(##.RPCServer.GetEnv'MAXWS')
          spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer

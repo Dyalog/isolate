@@ -11,8 +11,6 @@
 
  #.COUNTER←1
 
- 6 'VALUE ERROR IN CALLBACK' 'nosuchvar'expect'is.(##.nosuchvar)'
-
  counts←⊃¨{##.COUNTER+⍵}#.IÏ⍳4
  'Callback counter test' Fail 2 3 4 5 Check counts
 

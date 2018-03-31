@@ -2,8 +2,9 @@
 ID         : Isolate Tests
 Description: Put Isolates through their paces
 
-Setup   : setup_runtime setup_devt
+Setup   : setup
 Teardown: teardown
+Test    : test_runtime
 Test    : test_basic
 Test    : test_syntax
 Test    : test_errors

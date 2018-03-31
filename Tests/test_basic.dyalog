@@ -12,7 +12,7 @@
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double
-     ⎕←'*** WARNING: Futures do not coalesce to simple arrays cleanly'
+     Log 'Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
  :EndIf
 
  double←⊃¨double

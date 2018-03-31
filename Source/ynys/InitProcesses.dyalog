@@ -1,7 +1,10 @@
 ﻿ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts;procs;m
  (count limit)←0 3
  maxws←' MAXWS=',⍕op.maxws
- (ws rt)←op.(workspace(runtime∧onerror≢'debug'))
+ ws←op.workspace
+ :If (⊂rt←op.runtime)∊0 1      ⍝ if rt is boolean
+     rt←rt∧op.onerror≢'debug' ⍝ force runtime←0 if onerror≡'debug'
+ :EndIf
  iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
  iso,←' protocol=',op.protocol,' quiet=1'
  :If ws∨.≠' ' ⋄ ws←1⌽'""',checkWs addWSpath ws ⋄ :EndIf ⍝ if no path ('\/')
