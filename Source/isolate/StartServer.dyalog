@@ -1,1 +1,4 @@
-﻿ StartServer←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:#.isolate.ynys.StartServer⊢⍵ ⋄ ⍺(ynys.StartServer)⍵}
+﻿ StartServer←{ ⍝ Start an Isolate Server (not usually called by application code)
+     0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+     ynys.StartServer ⍵
+ }

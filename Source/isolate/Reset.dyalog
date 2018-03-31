@@ -1,1 +1,4 @@
-﻿ Reset←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.Reset⊢⍵ ⋄ ⍺(ynys.Reset)⍵}
+﻿ Reset←{ ⍝ Reset all isolate processes
+     0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+     ynys.Reset ⍵
+ }

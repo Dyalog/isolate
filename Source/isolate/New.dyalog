@@ -1,1 +1,4 @@
-﻿ New←{⍺←⊢ ⋄ 0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ⍵≡⍺ ⍵:ynys.New⊢⍵ ⋄ ⍺(ynys.New)⍵}
+﻿ New←{⍝ Return new isolate with contents specified by ⍵
+     0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+     ynys.New⊢⍵
+ }

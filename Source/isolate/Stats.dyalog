@@ -1,1 +1,4 @@
-﻿ Stats←{0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN ⋄ ynys.Stats ⍵}
+﻿ Stats←{
+     0::(⊃⍬⍴⎕DM)⎕SIGNAL ⎕EN
+     ynys.Stats ⍵
+ }
