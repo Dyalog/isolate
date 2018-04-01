@@ -1,6 +1,7 @@
 ﻿:Class AWS
 
-    ⍝ Experimental tools for running AWS isolate images
+    ⍝ Tool for launching AWS images
+
     ⍝ Assumes AWS Command Line interface is installed and configured
     ⍝ See https://docs.aws.amazon.com/cli/latest/userguide/installing.html
 
@@ -16,7 +17,7 @@
     :Field Public AWSver    ← ''    ⍝ AWS-CLI version info
 
     ∇ make;z
-     ⍝ Create instance and verify that AWS-CLI is available
+     ⍝ Create an instance and verify that AWS-CLI is available
      
       :Access Public
       :Implements Constructor
@@ -28,7 +29,7 @@
       :EndIf
     ∇
 
-    ∇ r←SetMyIp;z
+    ∇ {r}←SetMyIp;z
     ⍝ Set my public IP address using https://api.ipify.org
     ⍝ NB will load #.HttpCommand if not present
      
@@ -36,10 +37,10 @@
      
       r←''
       :Trap 0
-          :If 0=⎕NC'#.HttpCommand'
-              ⎕SE.SALT.Load'HttpCommand -target=#'
+          :If 0=⎕NC '#.HttpCommand'
+              ⎕SE.SALT.Load 'HttpCommand -target=#'
           :EndIf
-          z←#.HttpCommand.Get'https://api.ipify.org?format=json'
+          z←#.HttpCommand.Get 'https://api.ipify.org?format=json'
           :If 0=z.rc
           :AndIf 200=z.HttpStatus
               r←myIP←(⎕JSON z.Data).ip
@@ -49,7 +50,7 @@
     ∇
 
     ∇ r←CurrentState img;ns;filters
-     ⍝ Return matrix of instance-id, imake-id, state, public-ip
+     ⍝ Return matrix of instance-id, image-id, state, public-ip
      ⍝ Right argument can be '' to filter using default image, * to not filter, or a specific image id
      
       :Access Public
@@ -65,15 +66,22 @@
 
     ∇ r←{wait}Terminate img;state;running;filter;ns;instances;done;n;cmd
      ⍝ Return matrix of instance-id, imake-id, state, public-ip
-     ⍝ Right argument can be '' to filter using default image, * to not filter, or a specific image id
+     ⍝ Right argument can be : '' to filter using default image,
+     ⍝                       : '*' to terminate all images
+     ⍝                       : simple char vec to terminate all instances of a specific image-id
+     ⍝                       : vec-of-vecs to terminate specific instance-ids
      
       :Access Public
      
-      :If 0=⎕NC'wait' ⋄ wait←0 ⋄ :EndIf
-     
-      img←img,(0=≢img)/image
-     
-      state←CurrentState image
+      :If 0=⎕NC'wait' ⋄ wait←0 ⋄ :EndIf     
+      
+      :If 2=≢img ⍝ vector of specific instance-ids
+          state←CurrentState '*'
+          state←(state[;1]∊img)⌿state
+      :Else
+          img←img,(0=≢img)/image     ⍝ '' = default image
+          state←CurrentState image
+      :EndIf
      
       :If 0≠≢running←⍸state[;3]∊⊂'running'
           filter←' --instance-ids ',⍕state[running;1]
@@ -96,7 +104,7 @@
     ∇
 
     ∇ r←{wait}RunInstances n;cmd;z;done;instances;addr
-     ⍝ Start n instances of our image
+     ⍝ Start n instances of the current image
      
       :Access Public
      
@@ -121,18 +129,6 @@
               r←CurrentState''
           :EndIf
       :Until done
-     
-      →0
-      :For addr :In r[;4]
-          :Repeat
-              z←#.DRC.Clt''addr 22 'text' ⍝ Try to open SSH
-              :If 0≠⊃z
-                  ⎕←'Unable to connect to SSH port at ',addr,' - delaying'
-                  ⎕DL 2
-              :EndIf
-          :Until 0=⊃z
-          {}#.DRC.Close 2⊃z
-      :EndFor
     ∇
 
     ∇ r←StateInfo is
@@ -176,15 +172,6 @@
       :EndTrap
     ∇
 
-    ∇ r←AddServers procs;p
-    ⍝ Register each process as an isolate Server
-      :Access Public
-     
-      :For p :In procs
-          r←#.isolate.AddServer p.Address 7052
-      :EndFor
-    ∇
-
     :Class RemoteProcess
 
         :Field Public TID←¯1
@@ -223,7 +210,7 @@
                   Command.Userauth_Publickey user public private''
                   ok←1
               :Else
-                  ⎕←⎕DMX.Message,' connecting to ',host,' - retrying'
+                  ⎕←'   Error ',⎕DMX.Message,' connecting to ',host,' - retrying'
                   ⎕DL 2
                   ok←0
               :EndTrap
