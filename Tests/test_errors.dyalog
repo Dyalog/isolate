@@ -2,7 +2,7 @@
 
  ⍝ test more advanced error handling
 
- :If halt ⍝ /// global from ExecTest
+ :If ##.halt ⍝ /// global from ExecTest
      {}#.isolate.Config'onerror' 'signal' ⍝ paranoia: should be the default
      {}#.isolate.Reset 0
 

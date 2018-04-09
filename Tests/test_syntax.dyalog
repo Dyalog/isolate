@@ -47,7 +47,7 @@
 
  ⍝ Now test failing cases
 
- :If halt ⍝ global from ExecTest
+ :If ##.halt ⍝ global from ExecTest
      is.fail←1 ⍝ Should make all the defined fns crash
      6 'VALUE ERROR' 'nosuchvar'expect'is.nosuchvar'           ⍝ Case 0
      11 'DOMAIN ERROR' 'nil[1] r←1÷~fail'expect'is.nil'
@@ -58,7 +58,7 @@
      3 'INDEX ERROR' 'mat[...]'expect'+is.mat[4;]'             ⍝ Case 4
      3 'INDEX ERROR' 'mat[...]←...'expect'+is.mat[4;]←2 2⍴3 4' ⍝ Case 5
  :Else
-    'unable to test intentional errors due to bug in error trapping' Fail 1
+     'unable to test intentional errors due to bug in error trapping'Fail 1
  :EndIf
 
  z←''
