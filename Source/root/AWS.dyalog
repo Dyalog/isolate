@@ -194,8 +194,6 @@
           :Implements Constructor
          
           :If 0=⎕NC'#.SSH'
-              ⎕SE.SALT.Load'c:\devt\aplssh\SSH -target=#'
-          :AndIf 0=⎕NC'#.SSH'
               'aplssh needs to be loaded into #'⎕SIGNAL 6
           :EndIf
          
@@ -220,8 +218,10 @@
           :AndIf 0≠≢Dyalogs
               ∘∘∘ ⍝ already busy
           :EndIf
-         
+          
+          z←{0::0 ⋄ 2503⌶⍵}2 ⍝ Children of this thread should be un-interruptible
           TID←RunProcess&cmd
+          z←{0::0 ⋄ 2503⌶⍵}z ⍝ Restore thread interruption setting        
           Address←host
         ∇
 
@@ -235,7 +235,7 @@
         ⍝ return ps output for running Dyalog processes
           :Access Public
          
-          r←Command QSH'ps -ef|grep dyalog|grep -v grep'
+          r←Command QSH 'ps -ef|grep dyalog|grep -v grep'
         ∇
 
         ∇ r←SH cmd
