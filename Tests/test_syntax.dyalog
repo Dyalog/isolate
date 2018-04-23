@@ -47,18 +47,14 @@
 
  ⍝ Now test failing cases
 
- :If ##.halt ⍝ global from ExecTest
-     is.fail←1 ⍝ Should make all the defined fns crash
-     6 'VALUE ERROR' 'nosuchvar'expect'is.nosuchvar'           ⍝ Case 0
-     11 'DOMAIN ERROR' 'nil[1] r←1÷~fail'expect'is.nil'
-     11 'DOMAIN ERROR' '(1÷0)'expect'is.(1÷0)'
-     11 'DOMAIN ERROR' 'mon[1] r←1÷~fail'expect'is.mon 0'      ⍝ Case 1
-     11 'DOMAIN ERROR' 'dya[1] r←1÷~fail'expect'0 is.dya 0'    ⍝ Case 2
+ is.fail←1 ⍝ Should make all the defined fns crash
+ 6 'VALUE ERROR' 'nosuchvar'expect'is.nosuchvar'           ⍝ Case 0
+ 11 'DOMAIN ERROR' 'nil[1] r←1÷~fail'expect'is.nil'
+ 11 'DOMAIN ERROR' '(1÷0)'expect'is.(1÷0)'
+ 11 'DOMAIN ERROR' 'mon[1] r←1÷~fail'expect'is.mon 0'      ⍝ Case 1
+ 11 'DOMAIN ERROR' 'dya[1] r←1÷~fail'expect'0 is.dya 0'    ⍝ Case 2
  ⍝ is.(2+2)←3 ⍝ Can't think of a way to get Case 3 to fail in isolate
-     3 'INDEX ERROR' 'mat[...]'expect'+is.mat[4;]'             ⍝ Case 4
-     3 'INDEX ERROR' 'mat[...]←...'expect'+is.mat[4;]←2 2⍴3 4' ⍝ Case 5
- :Else
-     'unable to test intentional errors due to bug in error trapping'Fail 1
- :EndIf
+ 3 'INDEX ERROR' 'mat[...]'expect'+is.mat[4;]'             ⍝ Case 4
+ 3 'INDEX ERROR' 'mat[...]←...'expect'+is.mat[4;]←2 2⍴3 4' ⍝ Case 5
 
  z←''
