@@ -1,5 +1,7 @@
 ﻿ AWSIsolates n;iss;procs;z;data;start;cmd;iAWS;wait;p;instances
- ⍝ Start n instances of an Ubuntu 16.04 server running Dyalog  16.0 and use them as isolate servers
+ ⍝ Start n instances of an Ubuntu 16.04 server running Dyalog  16.0 and use them as isolate servers.
+ ⍝ For more information and to see it in action, see the Webinar "APL Processes and Isolates in the cloud",
+ ⍝     https://dyalog.tv/Webinar/?v=bpP99KEfUxI
 
  start←⎕AI[3]
  wait←1                           ⍝ constant: do not change this value
