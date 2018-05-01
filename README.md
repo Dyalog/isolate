@@ -6,14 +6,24 @@ Since version 14.0, Dyalog APL has included the workspace `isolate.dws`, which e
 
 Documentation for the futures and isolates can be found in the [Dyalog Documentation Centre](http://docs.dyalog.com/16.0/Parallel%20Language%20Features.pdf).
 
+## Version 17.0 Enhancements
+
+A project was started at Dyalog with the goal of enhancing the isolate workspace so that it would be possible to run *isolate servers* in the cloud. In the end, it turned out that a couple of bugfixes in the code which validated peer IP addresses to deal with IPv6 addresses was all that was really required.
+
+We also added a "sample" called `AWS`, which provides an interface to the Amazon Webservices Command Line Interface. This can be used to launch and manage AWS instances. [Dyalog Webinar 10](https://dyalog.tv/Webinar/?v=bpP99KEfUxI) demonstrates how to use this to run a large number of parallel isolates on the cloud.
+
 ## Samples
 
-In addition to the workspace which can be found in the `ws` folder along with most other distributed workspaces, a new folder of isolate-related samples are now installed in the folder `Samples/isolate` below the main Dyalog folder:
+In addition to the workspace which can be found in the `ws` folder along with most other distributed workspaces, a new folder of isolate-related samples are now installed in the folder `Samples/isolate` below the main Dyalog folder.
+
+It contains the AWS class and an example of how to use it, and also includes the `IIPageStats` sample, which computes letter frequencies used on all major newspaper sites in a given state in the USA, as an example of how to use the `ll.EachX` (extended parallel each) tool:
+
+### Contents of the Samples folder
 
 |File|Type|Description|
 |----|----|-----------|
-|AWS.dyalog|Class|The AWS class provides an interface to the Amazon Webservices Command Line Interface, which can be used to launch and manage AWS instances.|
-|AWSIsolates.dyalog|Function|This example shows how to use the AWS class to start a set of virtual machines and use them to run Isolates. This is the code used in [Dyalog Webinar 10](https://dyalog.tv/Webinar/?v=bpP99KEfUxI)|
-|IIPageStats.dyalog|Namespace|Demonstration of the `ll.EachX` utility function which reuses a set of isolates to perform a large number of parallel function calls|
+|AWS.dyalog|Class|Interface to the Amazon Webservices Command Line Interface|
+|AWSIsolates.dyalog|Function|Shows how to use the AWS class to start a set of virtual machines and use them to run Isolates|
+|IIPageStats.dyalog|Namespace|Demonstrates the use of `ll.EachX` tool|
 
 
