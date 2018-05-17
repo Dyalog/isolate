@@ -1,7 +1,7 @@
-﻿ r←Build;file;ver;src;t;version;rev;path;root;buildver
+﻿ r←Build;file;ver;src;t;version;rev;path;root;buildver;date
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in # and #.isolate (see function "BuildCovers")
-⍝    Insert isolate.Version to include GIT version numbers
+⍝    Insert isolate.Version to include GIT last commit date
 
  r←''
  version←'1.1' ⍝ base version
@@ -12,14 +12,13 @@
      ⎕←'*** WARNING - Production builds should be run using Dyalog ',buildver,' ***'
  :EndIf
 
- :If 0=⍴ver←⍕{0::'' ⋄ ⎕CMD'git -C "',⍵,'" rev-list HEAD --count'}root
- :OrIf (,1)≢1⊃⎕VFI ver
-     ⎕←'NB: Unable to get GIT revision information!'
-     ver←'0'
+ :If 0≠⍴date←⍕{0::'' ⋄ ⎕CMD'git -C "',⍵,'" log -1 --format=%cI'}root
+ :OrIf 0≠⍴date←⍕{0::'' ⋄ ⎕CMD'svn info --show-item last-changed-date "',⍵,'"'}root
+     date←' (',(date~' '),')'
  :Else
-     ver←ver~' '
+     ⎕←'NB: Unable to get GIT last commit date!'
  :EndIf
 
- ver←version,'.',⍕2⊃⎕VFI⍕ver ⍝ Join base version and git push count
+ ver←version,date ⍝ Join base version and git last commit date
  ⎕←'isolate.Version set to:'
  ⎕←isolate.Version←'Version ',ver,' built at ',,'ZI4,<->,ZI2,<->,ZI2,< >,ZI2,<:>,ZI2,<:>,ZI2'⎕FMT 1 6⍴⎕TS
