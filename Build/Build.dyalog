@@ -12,7 +12,7 @@
  :OrIf 0≠⍴date←⍕{0::'' ⋄ ⎕CMD'svn info --show-item last-changed-date "',⍵,'"'}root
      date←' (',(date~' '),')'
  :Else
-     'isolate Build: Unable to get GIT last commit date - isolate.Version not set!' ⎕SIGNAL 11
+     'isolate Build: Unable to get GIT last commit date - isolate. Version not set!' ⎕SIGNAL 11
  :EndIf
 
  ver←version,date ⍝ Join base version and git last commit date
