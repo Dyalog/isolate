@@ -9,7 +9,7 @@
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
 
  :If 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'git -C "',⍵,'" log -1 --format=%ci'}root
- :OrIf 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'cd "',⍵,'" && svn info | sed -n "s/^Last Changed Date: \\(.*\\) (.*)$/\\1/p"'}root
+ :OrIf 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'cd "',⍵,'" && svn info | sed -n "s/^Last Changed Date: \\(.*\\) (.*/\\1/p"'}root
      date←' (',date,')'
  :Else
      'isolate Build: Unable to get GIT last commit date - isolate. Version not set!' ⎕SIGNAL 11
