@@ -1,9 +1,8 @@
-﻿ r←Build;file;ver;src;t;version;rev;path;root;buildver;date;db
+﻿ Build;file;ver;src;t;version;rev;path;root;buildver;date;db
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in # and #.isolate (see function "BuildCovers")
 ⍝    Insert isolate.Version to include GIT last commit date
 
- r←''
  version←'1.1' ⍝ base version
  root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
