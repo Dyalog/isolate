@@ -7,7 +7,7 @@
     :Field Public Args←''
     :Field Public Ws←''
     :Field Public Exe←''
-    :Field Public Proc←⎕NS ''
+    :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
     :Field Public Platform
@@ -61,6 +61,7 @@
       IsWin←'Win'≡3↑Platform
       IsMac←'Mac'≡3↑Platform  
       IsSsh←0
+      Proc←⎕NS ''
     ∇  
 
     ∇ Run
