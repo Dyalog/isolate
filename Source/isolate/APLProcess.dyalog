@@ -137,7 +137,7 @@
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform;Proc
       :Access Public Shared      
       make_common
       :If IsWin
