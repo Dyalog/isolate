@@ -1,4 +1,4 @@
-﻿ Build;file;ver;src;t;version;rev;path;root;buildver;date;db
+﻿ Build;file;ver;src;t;version;rev;path;root;buildver;date;db;commit
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in # and #.isolate (see function "BuildCovers")
 ⍝    Insert isolate.Version to include GIT last commit date
@@ -7,11 +7,13 @@
  root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
 
+ commit←{z←∊⎕CMD'git -C "',⍵,'" log -1 --format=medium' ⋄ 'commit '≡7↑z:'commit ',(7↑7↓z),' ' ⋄ ''}root
+
  :If 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'git -C "',⍵,'" log -1 --format=%ci'}root
  :OrIf 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'cd "',⍵,'" && svn info | sed -n "s/^Last Changed Date: \\(.*\\) (.*/\\1/p"'}root
-     date←' (',date,')'
+     date←' (',commit,date,')'
  :Else
-     'isolate Build: Unable to get GIT last commit date - isolate. Version not set!' ⎕SIGNAL 11
+     'isolate Build: Unable to get GIT last commit date - isolate. Version not set!'⎕SIGNAL 11
  :EndIf
 
  ver←version,date ⍝ Join base version and git last commit date
