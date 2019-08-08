@@ -4,9 +4,9 @@
     Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in
     StartTime←⎕TS
     Commands←Errors←CPU←0
-    ß←{} ⍝ stub "fake" function to allow stats reporting 
+    ß←{} ⍝ stub "fake" function to allow stats reporting
     DEBUG←0 ⍝ Set to 1 to get diagnostic messages
-    
+
     ∇ r←Log text
       →DEBUG↓0
       ⎕←text
@@ -22,7 +22,7 @@
           r←2 ⎕NQ'.' 'GetEnvironment'name
       :EndIf
     ∇
- 
+
     ∇ r←{folder}Launch(params port);z;folder;ws
     ⍝ Launch RPC Server as an external process
     ⍝ Params should include -Load=
@@ -62,7 +62,7 @@
     ⍝ /// Could be extended with
     ⍝ -Config=name of a configuration file
     ⍝ -ClientAddr=limit to connections from given site
-      
+     
       folder←{(1-⌊/(⌽⍵)⍳'/\')↓⍵}⎕WSID
       num←{⊃2⊃⎕VFI ⍵}
       sslflags←32+64 ⍝ Accept without Validating, RequestClientCertificate
@@ -71,15 +71,15 @@
       port←num GetEnv'Port'
       autoshut←num GetEnv'AutoShut' ⍝ Shut down if 1st connection is lost
       quiet←num GetEnv'Quiet'       ⍝ Suppress diagnostic session output
-      allowremote←GetEnv 'AllowRemote' ⍝ Remote access 
-      allowremote←(0≠≢allowremote)/{1↓¨(⍵=',')⊂⍵}',',allowremote 
-      
+      allowremote←GetEnv 'AllowRemote' ⍝ Remote access
+      allowremote←(0≠≢allowremote)/{1↓¨(⍵=',')⊂⍵}',',allowremote
+     
       z←##.DRC.Init''
       localaddrs←⊃⍪/{0::0 3⍴⊂⍬ ⋄ DNSLookup ⍵}¨'' 'localhost' ⍝ Find all local addresses
       :If 0=≢localaddrs ⍝ /// paranoia: the above SHOULD work
           localaddrs←1 3⍴'IPv4' '127.0.0.1'(127 0 0 1)
       :EndIf
-          
+     
       :If 0≠⍴load←GetEnv'Load'
           load←{1↓¨(','=⍵)⊂⍵}',',load
           :For l :In load
@@ -97,9 +97,10 @@
      
       :If 0≠1⊃z ⋄ Log z ⋄ ⎕DL 10 ⋄ :EndIf ⍝ /// Pop up? Log?
      
-      :While ##.DRC.Exists name
-          ⎕DL 10
-      :EndWhile
+      'TIMER' ⎕WC 'Timer' 5000 ('Event' 'Timer' 1)
+      :Repeat
+          z←⎕DQ'TIMER'
+      :Until ~##.DRC.Exists name
      
       ⎕OFF
     ∇
@@ -182,7 +183,7 @@
               :Case 0
                   :Select event
                   :Case 'Error'
-                      ⍪quiet↓⊂'Error ',(⍕data),' on ',obj      
+                      ⍪quiet↓⊂'Error ',(⍕data),' on ',obj
                       :If ~done∨←(⊂obj)∊name first ⍝ Error on the listener or 1st connection?
                           {}##.DRC.Close obj ⍝ Close connection in error
                       :EndIf
@@ -191,6 +192,7 @@
                       :AndIf 0=#.DRC.Exists first
                           ⍪quiet↓⊂'First connection lost - AutoShut initiated'
                           done←1 ⋄ autoshut←2
+                          :If 9=⎕NC 'TIMER' ⋄ ⎕NQ 'TIMER' 'Timer' ⋄ :EndIf
                       :EndIf
      
                   :Case 'Receive'
@@ -207,12 +209,12 @@
                   :Case 'Connect' ⍝ Set 'KeepAlive' to 10 seconds so we discover IP disconnections
                       first,←(0=⍴first)/obj ⍝ bond to parent
                       {}##.DRC.SetProp obj'KeepAlive' 10000 10000
-                      addr←{(-(⌽⍵)⍳':')↓⍵}2 2⊃##.DRC.GetProp obj'PeerAddr' 
+                      addr←{(-(⌽⍵)⍳':')↓⍵}2 2⊃##.DRC.GetProp obj'PeerAddr'
                       addr←addr~'[]'
                       addr←(7×'::ffff:'≡7↑addr)↓addr ⍝ IPv4 wrapped in IPv6
-
+     
                       :If ~ok←(⊂addr)∊localaddrs[;2] ⍝ remote
-                          :For i :In ⍳≢allowremote               
+                          :For i :In ⍳≢allowremote
                               :Select 3↑filter←i⊃allowremote
                               :CaseList 'ip=' 'IP=' ⍝ ip address
                                   :If ok←ok∨addr{⍵≡(⍴⍵)↑⍺}3↓filter ⋄ :Leave ⋄ :EndIf
@@ -224,9 +226,9 @@
                           Log 'Filters: ' allowremote
                           {}##.DRC.Close obj ⍝ 'bye
                       :EndIf
-                  
+     
                   :Case 'Timeout' ⍝ Eventmode Timeout - see 100 below
-
+     
                   :Else ⍝ Unexpected result? should NEVER happen
                       ⎕←'Unexpected result "',event,'" from object "',name,'" - RPC Server shutting down' ⋄ done←1
      

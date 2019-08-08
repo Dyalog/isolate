@@ -17,7 +17,7 @@
          :EndIf
          z←DRC.SetProp'.' 'Protocol'(op.protocol)
          ss.retry_limit←99      ⍝ How many retries
-         ss.retry_interval←0.25 ⍝ Length of first wait (increases with interval each wait)
+         ss.retry_interval←0.05 ⍝ Length of first wait (increases with interval each wait)
          ss.orig←whoami''
          ss.homeport←7051
          ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
