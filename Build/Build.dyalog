@@ -7,7 +7,7 @@
  root←⌽{(⌊/⍵⍳'/\')↓⍵}⌽⎕WSID
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
 
- commit←{z←∊⎕CMD'git -C "',⍵,'" log -1 --format=medium' ⋄ 'commit '≡7↑z:'commit ',(7↑7↓z),' ' ⋄ ''}root
+ commit←{0::'' ⋄ z←∊⎕CMD'git -C "',⍵,'" log -1 --format=medium' ⋄ 'commit '≡7↑z:'commit ',(7↑7↓z),' ' ⋄ ''}root
 
  :If 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'git -C "',⍵,'" log -1 --format=%ci'}root
  :OrIf 0≠⍴date←⍕{0::'' ⋄ ⊃⎕CMD'cd "',⍵,'" && svn info | sed -n "s/^Last Changed Date: \\(.*\\) (.*/\\1/p"'}root
