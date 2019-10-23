@@ -4,8 +4,7 @@
      s←⍺⍺ fnSpace'f'
 
      i←New s
-     ⍵≡⍺ ⍵:i.f ⍵    ⍝ monad
-     ⍺ i.f ⍵        ⍝ dyad
+     i.f ⍵
 
 ⍝ parallel
 ⍝ ⍺     [larg]
