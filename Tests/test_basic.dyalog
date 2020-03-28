@@ -1,6 +1,7 @@
-﻿ z←test_basic dummy;time;delta;is;ns;test;dfns;double
+﻿ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack
  ⍝ Take futures and isolates for a little spin
 
+ rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log
  {}#.isolate.Config'listen' 0
  {}#.isolate.Config'processors' 4
 
@@ -12,7 +13,7 @@
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double
-     Log 'Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
+     Log'Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
  :EndIf
 
  double←⊃¨double

@@ -1,12 +1,18 @@
-﻿ z←test_errors dummy;x;result;is
-
+﻿ z←test_errors dummy;x;result;is;start;max
  ⍝ test more advanced error handling
+ z←'' ⋄ →0
 
  {}#.isolate.Config'onerror' 'signal' ⍝ paranoia: should be the default
  {}#.isolate.Reset 0
 
  'IÏ with one error'Fail 5 Check≢result←{z←⎕DL⊃⍵ ⋄ 1 2 3÷⍵}#.IÏ 1 2(3 4)(5 6)0
- ⎕DL 4
+
+ start←3⊃⎕AI
+ max←4000
+
+ :Repeat
+ :Until max<(3⊃⎕AI)-start
+
  x←4 5⍴#.isolate.(Values,Available,Failed,Running)'result'
  'Test of isolate.Values'Fail((1 2 3)(0.5 1 1.5)⎕NULL ⎕NULL ⎕NULL)Check x[1;]
  'Test of isolate.Available'Fail 1 1 0 0 0 Check x[2;]
