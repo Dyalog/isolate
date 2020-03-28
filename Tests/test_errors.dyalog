@@ -1,6 +1,5 @@
 ﻿ z←test_errors dummy;x;result;is;start;max
  ⍝ test more advanced error handling
- z←'' ⋄ →0
 
  {}#.isolate.Config'onerror' 'signal' ⍝ paranoia: should be the default
  {}#.isolate.Reset 0
