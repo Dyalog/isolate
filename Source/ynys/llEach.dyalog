@@ -3,8 +3,8 @@
      trapErr''::signal''
      n←⍺⍺ fnSpace'f'
      s←⍴⍺⊢¨⍵
-     i←New¨s⍴n
-     ⊂⍣(s≡⍬)⊢⍺ i.f ⍵
+     i←New¨(×/s)⍴n
+     s⍴⍺ i.f ⍵  
 
 ⍝ parallel each
 ⍝ ⍺     [larg]
