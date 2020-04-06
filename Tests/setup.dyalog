@@ -5,7 +5,10 @@
      :AndIf 0=(1⊃⎕RSI).quiet       ⍝ check if quiet-flag is set
          Log'Did not find #.isolate, now attempting to build (and save) the workspace'
      :EndIf
-     ⎕SE.UCMD'DBuild ',(∊1 ⎕NPARTS(1⊃⎕NPARTS ##.TESTSOURCE),'../isolate.dyalogbuild'),' -save=1',(1⊃⎕RSI).quiet/' -quiet'   ⍝ if isolate not present, build it and save it (we need it when launching isolates...)
+     ⎕←r←'Ending this run to launch ]DBuild. Will automatically resume afterwards!'
+     ⎕SE.DBuild_postSave←'{sink←2⎕NQ''⎕SE'' ''Keypress''⍵}¨'']',⎕se.cmd,'''',',⊂''ER'''
+     {2⎕nq'⎕SE' 'KeyPress'⍵}¨']DBuild ',(∊1 ⎕NPARTS(1⊃⎕NPARTS ##.TESTSOURCE),'../isolate.dyalogbuild'),' -clear -save=1',((1⊃⎕RSI).quiet/' -quiet'),⊂'ER'   ⍝ if isolate not present, build it and save it (we need it when launching isolates...)
+    
  :EndIf
 
  :If 0=⎕NC'Fail' ⍝ Running v16.0 or earlier
