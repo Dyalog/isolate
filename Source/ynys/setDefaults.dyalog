@@ -19,7 +19,7 @@
          spaces.protocol←tod'S' 'IPv4' 'IPv6' 'IP' ⍝ default to IPv4
          spaces.maxws←tod'S'(##.RPCServer.GetEnv'MAXWS')
          spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
-         spaces.workspace←tod'S'(getDefaultWS'isolate') ⍝ load current ws for remotes?
+         spaces.workspace←tod'S'(getDefaultWS'isolate.dws') ⍝ load current ws for remotes?
          1:1
      }⍣new⊢0
      0::(⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
