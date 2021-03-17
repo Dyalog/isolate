@@ -13,11 +13,11 @@
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double
-     ⎕←'*** WARNING: Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
+     Log'*** WARNING: Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
  :EndIf
 
  double←⊃¨double
-⍝ test Fail 2 4 6 8 Check double ⍝ Remove the above :If clause when the bug is fixed
+ test Fail 2 4 6 8 Check double ⍝ Remove the above :If clause when the bug is fixed
 
  time←3⊃⎕AI ⋄ z←⎕DL #.IÏ 4⍴1
  :If 100<delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
