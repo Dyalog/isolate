@@ -1,4 +1,4 @@
-﻿ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack
+﻿ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack;n2
  ⍝ Take futures and isolates for a little spin
 
  rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log
@@ -13,11 +13,11 @@
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double
-     Log'Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
+     ⎕←'*** WARNING: Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
  :EndIf
 
  double←⊃¨double
- test Fail 2 4 6 8 Check double ⍝ Remove the above :If clause when the bug is fixed
+⍝ test Fail 2 4 6 8 Check double ⍝ Remove the above :If clause when the bug is fixed
 
  time←3⊃⎕AI ⋄ z←⎕DL #.IÏ 4⍴1
  :If 100<delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
@@ -33,6 +33,15 @@
  :EndIf
  z←+/z                         ⍝ This should block
  '+/{⍵ ⍵}⎕DL IÏ 1 ran in less than 1 second'Fail 1000>delta←(3⊃⎕AI)-time
+
+ n2←(2×1111⌶⍬)
+
+ :Trap 0
+     z←⎕NC ll.Each n2⍴⊂'...'
+     'll.Each'Fail(n2⍴¯1)Check z
+ :Else
+     ((⊃⎕DM),' in ll.Each: ')Fail 0
+ :EndTrap
 
  ⍝ Check isolate creation options
  #.data←42 ⍝ NB must not be localised

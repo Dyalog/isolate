@@ -1,11 +1,11 @@
-:Namespace ll
+﻿:Namespace ll
 ⍝ Parallel Extensions
     
     (⎕IO ⎕ML ⎕WX)←1 1 3
         
     Each←{⍺←⊢ ⋄ ⍺ (⍺⍺ EachX ⍬) ⍵}
        
-    ∇ r←{left}(fns EachX iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;run1iso;callbk;expr;z;PF;cblarg;cancelled;cbprovided;noIso;cr
+    ∇ r←{left}(fns EachX iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;callbk;expr;z;PF;cblarg;cancelled;cbprovided;noIso;cr
     ⍝ IÏ using queueing on persistent Isolates:
     ⍝
     ⍝ iss is a list of refs to pre-existing isolates to use
@@ -63,17 +63,8 @@
       n←⍴right←,right ⋄ :If dyadic ⋄ left←,left ⋄ :EndIf
       counts←ni⍴0 ⋄ done←failed←n⍴count←0
       r←n⍴⎕NULL
-     
-      run1iso←{⍝ drive isolate ⍵ until we are done
-          n<next←⎕THIS.(count←count+1):0 ⍝ no more to do
-          r[next]←⊂⍎expr
-          counts[⍺]+←1
-          z←{0::failed[⍵]←1 ⋄ done[⍵]←1⊣+r[⍵]}next ⍝ Reference it
-          cblarg callbk counts,count⌊n:''⊣⎕THIS.cancelled←1
-          ⍺ ∇ ⍵    ⍝ loop until done
-      }
-     
-      expr←(dyadic/'(next⊃left) '),'⍵.{',(dyadic/'⍺ '),fn,'⍵} next⊃right'
+          
+      expr←(dyadic/'(next⊃left) '),'iso.{',(dyadic/'⍺ '),fn,' ⍵} next⊃right'
       cancelled←0
       :If 1=≢iss ⍝ Only one: do it in main thread
           z←1 run1iso⊃iss
@@ -112,5 +103,20 @@
           abort←1 ⍝ User killed the GUI
       :EndTrap
     ∇
+    
+    ∇z←isoix run1iso iso;next
+     ⍝ drive isolate #iso until we are done
+     ⍝ NB semi-globals from EachX: r n count counts bclarg callbk cancelled
+
+     z←0
+     :While n≥next←count←count+1 ⍝ no more to do
+         r[next]←⊂⍎expr
+         counts[isoix]+←1
+         z←{0::failed[⍵]←1 ⋄ done[⍵]←1⊣+r[⍵]}next ⍝ Reference it 
+         :If cblarg callbk counts,count⌊n 
+            →0⊣z←''⊣cancelled←1
+         :EndIf
+     :EndWhile
+    ∇             
 
 :EndNamespace
