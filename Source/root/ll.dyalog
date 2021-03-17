@@ -1,4 +1,4 @@
-﻿:Namespace ll
+:Namespace ll
 ⍝ Parallel Extensions
     
     (⎕IO ⎕ML ⎕WX)←1 1 3
@@ -55,7 +55,7 @@
       :If cbprovided
           callbk←(⊃⎕RSI)⍎cb
       :Else
-          callbk←⍎cb
+          callbk←⍎cb,(0=≢cb)/'{0}'
       :EndIf
      
       ni←≢iss
