@@ -4,20 +4,47 @@
 
     (⎕IO ⎕ML)←1 1
 
+    ∇ r←Version
+      :Access Public Shared
+      r←'APLProcess' '2.0' '16 March 2021'
+    ∇
+
     :Field Public Args←''
     :Field Public Ws←''
     :Field Public Exe←''
     :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
-    :Field Public Platform
-    :Field Public IsWin
-    :Field Public IsMac
     :Field Public IsSsh
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
     eis←{2>|≡⍵:,⊂⍵ ⋄ ⍵} ⍝ enclose if simple
+
+    ∇ r←IsWin
+      :Access public shared
+      r←'Win'≡Platform
+    ∇
+
+    ∇ r←IsMac
+      :Access public shared
+      r←'Mac'≡Platform
+    ∇
+
+    ∇ r←Platform
+      :Access public shared
+      r←3↑⊃#.⎕WG'APLVersion'
+    ∇
+
+    ∇ r←IsNetCore
+      :Access public shared
+      r←(,'1')≡2 ⎕NQ'.' 'GetEnvironment' 'DYALOG_NETCORE'
+    ∇
+
+    ∇ r←UsingSystemDiagnostics
+      :Access public shared
+      r←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
+    ∇
 
     ∇ path←SourcePath;source
     ⍝ Determine the source path of the class
@@ -58,13 +85,8 @@
 
     ∇ make_common
       Proc←⎕NS'' ⍝ Do NOT do this in the field definition
-      Platform←⊃#.⎕WG'APLVersion'
-      IsWin←'Win'≡3↑Platform
-      IsMac←'Mac'≡3↑Platform 
-      IsNetCore←(,'1')≡2 ⎕NQ '.' 'GetEnvironment' 'DYALOG_NETCORE'
-      UsingSystemDiagnostics←(1+IsNetCore)⊃'System,System.dll' 'System,System.Diagnostics.Process'
       IsSsh←0
-    ∇  
+    ∇
 
     ∇ Run
       :Access Public Instance
@@ -127,21 +149,19 @@
       {}Kill Proc
     ∇
 
-    ∇ r←GetCurrentProcessId;t;IsWin;IsMac;IsSsh;Platform
-      :Access Public Shared 
-      make_common
+    ∇ r←GetCurrentProcessId;t
+      :Access Public Shared
       :If IsWin
           r←⍎'t'⎕NA'U4 kernel32|GetCurrentProcessId'
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           r←Proc.Pid
       :Else
           r←tonum⊃_SH'echo $PPID'
       :EndIf
     ∇
 
-    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn;IsWin;IsMac;IsSsh;Platform;Proc
-      :Access Public Shared      
-      make_common
+    ∇ r←GetCurrentExecutable;⎕USING;t;gmfn
+      :Access Public Shared
       :If IsWin
           r←''
           :Trap 0
@@ -154,7 +174,7 @@
               r←r,(~(¯1↑r)∊'\/')/'/' ⍝ Add separator if necessary
               r←r,(Diagnostics.Process.GetCurrentProcess.ProcessName),'.exe'
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘ ⍝ Not supported
       :Else
           t←⊃_PS'-o args -p ',⍕GetCurrentProcessId ⍝ AWS
@@ -199,7 +219,7 @@
                       r←(kids[;1]∊m/p.Id)⌿kids
                   :EndIf
               :EndIf
-          :ElseIf IsSsh
+          :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
               ∘∘∘
           :Else
               mask←(⍬⍴⍴kids)⍴0
@@ -247,7 +267,7 @@
                   :EndFor
               :EndIf
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
@@ -277,7 +297,7 @@
                   ⎕DL delay×~Proc.HasExited
                   delay+←delay
               :Until (delay>10)∨Proc.HasExited
-          :ElseIf IsSsh
+          :ElseIf {2::0 ⋄ IsSsh}''
               ∘∘∘
           :Else ⍝ Local UNIX
               {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt
@@ -305,7 +325,7 @@
                   :If IsWin
                       :If IsNetCore ⋄ Proc.Kill ⍬ ⋄ :Else ⋄ Proc.Kill ⋄ :EndIf
                       ⎕DL 0.2
-                  :ElseIf IsSsh
+                  :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
                       ∘∘∘
                   :Else
                       {}UNIXIssueKill 3 Proc.Id ⍝ issue strong interrupt AWS
@@ -327,10 +347,24 @@
 
     ∇ r←HasExited
       :Access public instance
-      :If IsWin∨IsSsh
+      :If IsWin∨{2::0 ⋄ IsSsh}''
           r←{0::⍵ ⋄ Proc.HasExited}1
       :Else
           r←~UNIXIsRunning Proc.Id ⍝ AWS
+      :EndIf
+    ∇
+
+    ∇ r←GetExitCode
+      :Access public Instance
+      ⍝ *** EXPERIMENTAL ***
+      ⍝ query exit code of process. Attempt to do it in a cross platform way relying on .Net Core. Unfortunetaly
+      ⍝ we only use it on Windows atm, so this method can only be used on Windows.
+      r←''  ⍝ '' indicates "can't check" (for example, because it is still running) or non-windows platform
+      :If HasExited
+          :If IsWin
+              r←Proc.ExitCode
+          :Else
+          :EndIf
       :EndIf
     ∇
 
@@ -359,7 +393,7 @@
                   r←0
               :EndTrap
           :EndIf
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}''
           ∘∘∘
       :Else
           r←UNIXIsRunning pid
@@ -380,9 +414,9 @@
           :If IsNetCore ⋄ proc.Kill ⍬ ⋄ :Else ⋄ proc.Kill ⋄ :EndIf
           {}⎕DL 0.5
           r←~##.APLProcess.IsRunning pid
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
-      :ElseIf
+      :Else
           {}UNIXIssueKill 3 pid ⍝ issue strong interrupt
       :EndIf
     ∇
@@ -397,7 +431,7 @@
     ∇ {r}←UNIXIssueKill(signal pid)
       signal pid←⍕¨signal pid
       cmd←'kill -',signal,' ',pid,' >/dev/null 2>&1 ; echo $?'
-      :If IsSsh
+      :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
           r←⎕SH cmd
@@ -408,7 +442,7 @@
       ⍝ Retrieve sort form of cmd used to start process <pid>
       cmd←(1+IsMac)⊃'cmd' 'command'
       cmd←'ps -o ',cmd,' -p ',(⍕pid),' 2>/dev/null ; exit 0'
-      :If IsSsh
+      :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
           r←⊃1↓⎕SH cmd
@@ -464,11 +498,9 @@
       :EndIf
     ∇
 
-    ∇ r←MyDNSName;GCN;IsWin;IsSsh;IsMac;Platform
+    ∇ r←MyDNSName;GCN
       :Access Public Shared
-      
-      make_common ⍝ because this method is shared 
-
+     
       :If IsWin
           'GCN'⎕NA'I4 Kernel32|GetComputerNameEx* U4 >0T =U4'
           r←2⊃GCN 7 255 255
@@ -482,7 +514,7 @@
       ⍝ ComputerNamePhysicalDnsDomain = 6
       ⍝ ComputerNamePhysicalDnsFullyQualified = 7 <<<
       ⍝ ComputerNameMax = 8
-      :ElseIf IsSsh
+      :ElseIf {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘ ⍝ Not supported
       :Else
           r←⊃_SH'hostname'
