@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.0' '16 March 2021'
+      r←'APLProcess' '2.1' '18 March 2021'
     ∇
 
     :Field Public Args←''
@@ -15,7 +15,10 @@
     :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
-    :Field Public IsSsh
+    :Field Public IsSsh        
+    :Field Public RideInit←''
+    :Field Public OutFile←''
+    :Field Public WorkingDir←''
 
     endswith←{w←,⍵ ⋄ a←,⍺ ⋄ w≡(-(⍴a)⌊⍴w)↑a}
     tonum←{⊃⊃(//)⎕VFI ⍵}
@@ -75,10 +78,11 @@
       ⍝ {[3]} if present, a Boolean indicating whether to use the runtime version, OR a character vector of the executable name to run
       ⍝ {[4]} if present, the RIDE_INIT parameters to use
       ⍝ {[5]} if present, a log-file prefix for process output
+      ⍝ {[6]} if present, the "current directory" when APL is started
       make_common
       args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
-      args←5↑args,(⍴args)↓'' '' 0 '' ''
-      (ws cmd rt RIDE_INIT OUT_FILE)←args
+      args←6↑args,(⍴args)↓'' '' 0 '' '' ''
+      (ws cmd rt RideInit OutFile WorkingDir)←args
       PATH←SourcePath
       Start(ws cmd rt)
     ∇
@@ -86,6 +90,7 @@
     ∇ make_common
       Proc←⎕NS'' ⍝ Do NOT do this in the field definition
       IsSsh←0
+      WorkingDir←1⊃1 ⎕NPARTS'' ⍝ default directory
     ∇
 
     ∇ Run
@@ -95,8 +100,7 @@
 
     ∇ Start(ws args rt);psi;pid;cmd;host;port;keyfile;exe;z;output
       (Ws Args)←ws args
-      args,←' RIDE_INIT="',RIDE_INIT,'"',(0≠≢RIDE_INIT)/' RIDE_SPAWNED=1'
-        ⍝ NB Always set RIDE_INIT to override current process setting
+      args,←' RIDE_INIT="',RideInit,'"',(0≠≢RideInit)/' RIDE_SPAWNED=1' ⍝ NB Always set RIDE_INIT to override current process setting
      
       :If ~0 2 6∊⍨10|⎕DR rt ⍝ if rt is character or nested, it defines what to start
           Exe←(RunTimeName⍣rt)GetCurrentExecutable ⍝ else, deduce it
@@ -109,6 +113,7 @@
           ⎕USING←UsingSystemDiagnostics
           psi←⎕NEW Diagnostics.ProcessStartInfo,⊂Exe(ws,' ',args)
           psi.WindowStyle←Diagnostics.ProcessWindowStyle.Minimized
+          psi.WorkingDirectory←WorkingDir
           Proc←Diagnostics.Process.Start psi
       :Else ⍝ Unix
           :If ~∨/'LOG_FILE'⍷args            ⍝ By default
@@ -117,12 +122,15 @@
      
           :If IsSsh
               (host port keyfile exe)←Exe
-              cmd←args,' ',exe,' +s -q ',ws
+              cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '     
+              cmd,←args,' ',exe,' +s -q ',ws
               Proc←SshProc host port keyfile cmd
           :Else
               z←⍕GetCurrentProcessId
               output←(1+×≢OUT_FILE)⊃'/dev/null'OUT_FILE
-              pid←_SH'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
+              cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '
+              cmd,←'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
+              pid←_SH cmd
               Proc.Id←pid
               Proc.HasExited←HasExited
           :EndIf
@@ -271,7 +279,7 @@
           ∘∘∘
       :Else ⍝ Linux
       ⍝ unfortunately, Ubuntu (and perhaps others) report the PPID of tasks started via ⎕SH as 1
-      ⍝ so, the best we can do at this point is identify processes that we tagged with ppid=
+      ⍝ so, the best we can do at this point is identify processes that we tagged with APLppid=
           mask←' '∧.=procs←' ',↑_PS'-eo pid,cmd',((~all)/' | grep APLppid=',(⍕GetCurrentProcessId)),(0<⍴procName)/' | grep ',procName,' | grep -v grep' ⍝ AWS
           mask∧←2≥+\mask
           procs←↓¨mask⊂procs
