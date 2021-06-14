@@ -12,7 +12,7 @@
      :If 0∊⍴nr←#.⎕NR glyph
          11 ⎕SIGNAL⍨'isolate Build: Could not find #.',glyph
      :EndIf
-     nr[1]←⊂name,'←'((¯1∘+⍳⍨)↓⊣)1⊃nr
+     nr[1]←⊂name,'←'((¯1∘+⍳⍨)↓⊢)1⊃nr
      :If 0=1↑0⍴#.isolate.⎕FX nr
          11 ⎕SIGNAL⍨'Unable to define cover function #.isolate.',name
      :EndIf
