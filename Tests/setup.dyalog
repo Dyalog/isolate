@@ -1,4 +1,4 @@
-﻿ r←setup dummy
+﻿ r←setup dummy;do
 ⍝ Setup for isolate tests - reset any settings to defaults
  :If 0=#.⎕NC'isolate'
      :If 2=(1⊃⎕RSI).⎕NC'quiet'  ⍝ we usually run this through ]DTest
@@ -6,9 +6,11 @@
          Log'Did not find #.isolate, now attempting to build (and save) the workspace'
      :EndIf
      ⎕←r←'Ending this run to launch ]DBuild. Will automatically resume afterwards!'
-     ⎕SE.DBuild_postSave←'{sink←2⎕NQ''⎕SE'' ''Keypress''⍵}¨'']',⎕se.cmd,'''',',⊂''ER'''
-     {2⎕nq'⎕SE' 'KeyPress'⍵}¨']DBuild ',(∊1 ⎕NPARTS(1⊃⎕NPARTS ##.TESTSOURCE),'../isolate.dyalogbuild'),' -clear -save=1',((1⊃⎕RSI).quiet/' -quiet'),⊂'ER'   ⍝ if isolate not present, build it and save it (we need it when launching isolates...)
-    
+     do←{key←{2 ⎕NQ'⎕SE' 'Keypress'⍵} ⋄ key¨⍵,⊂'ER'}
+     do ']DBuild ',(∊1 ⎕NPARTS(1⊃⎕NPARTS ##.TESTSOURCE),'../isolate.dyalogbuild'),' -clear ',((1⊃⎕RSI).quiet/' -quiet')
+    do ')save'
+    do ']',⎕SE.cmd
+    →0
  :EndIf
 
  :If 0=⎕NC'Fail' ⍝ Running v16.0 or earlier

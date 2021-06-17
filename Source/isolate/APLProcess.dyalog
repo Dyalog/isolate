@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.1' '18 March 2021'
+      r←'APLProcess' '2.2' '15 June 2021'
     ∇
 
     :Field Public Args←''
@@ -15,7 +15,7 @@
     :Field Public Proc
     :Field Public onExit←''
     :Field Public RunTime←0    ⍝ Boolean or name of runtime executable
-    :Field Public IsSsh        
+    :Field Public IsSsh
     :Field Public RideInit←''
     :Field Public OutFile←''
     :Field Public WorkingDir←''
@@ -81,7 +81,7 @@
       ⍝ {[6]} if present, the "current directory" when APL is started
       make_common
       args←{2>|≡⍵:,⊂⍵ ⋄ ⍵}args
-      args←6↑args,(⍴args)↓'' '' 0 '' '' ''
+      args←6↑args,(⍴args)↓'' '' 0 RideInit OutFile WorkingDir
       (ws cmd rt RideInit OutFile WorkingDir)←args
       PATH←SourcePath
       Start(ws cmd rt)
@@ -120,15 +120,14 @@
               args,←' LOG_FILE=/dev/null '  ⍝    no log file
           :EndIf
      
+          cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '
           :If IsSsh
               (host port keyfile exe)←Exe
-              cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '     
               cmd,←args,' ',exe,' +s -q ',ws
               Proc←SshProc host port keyfile cmd
           :Else
               z←⍕GetCurrentProcessId
               output←(1+×≢OUT_FILE)⊃'/dev/null'OUT_FILE
-              cmd←(~0∊⍴WorkingDir)/'cd ',WorkingDir,'; '
               cmd,←'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
               pid←_SH cmd
               Proc.Id←pid
