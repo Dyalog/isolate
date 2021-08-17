@@ -1,7 +1,8 @@
-﻿ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts;procs;m
+﻿ r←ss InitProcesses op;z;count;limit;ok;maxws;ws;rt;iso;ports;pids;pclts;procs;m;wd;of;ri
  (count limit)←0 3
  maxws←' MAXWS=',⍕op.maxws
  ws←op.workspace
+ (ri of wd)←op.(rideinit outfile workdir)
  :If (⊂rt←op.runtime)∊0 1      ⍝ if rt is boolean
      rt←rt∧op.onerror≢'debug' ⍝ force runtime←0 if onerror≡'debug'
  :EndIf
@@ -22,7 +23,7 @@
 
  :Repeat
      count+←1
-     procs←{⎕NEW ##.APLProcess(ws ⍵ rt)}∘{'AutoShut=1 Port=',(⍕⍵),' APLCORENAME=',(⍕⍵),' ',iso}¨ports
+     procs←{⎕NEW ##.APLProcess(ws ⍵ rt ri of wd)}∘{'AutoShut=1 Port=',(⍕⍵),' APLCORENAME=',(⍕⍵),' ',iso}¨ports
      procs.onExit←{'{}#.DRC.Close ''PROC',⍵,''''}¨⍕¨pids ⍝ signal soft shutdown to process
 
      pclts←pids InitConnections ss.orig ports ss.callback ss.remoteclients

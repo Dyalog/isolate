@@ -20,6 +20,9 @@
          spaces.maxws←tod'S'(##.RPCServer.GetEnv'MAXWS')
          spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
          spaces.workspace←tod'S'(getDefaultWS'isolate.dws') ⍝ load current ws for remotes?
+         spaces.rideinit←tod'S' ''                 ⍝ RIDE_INIT for APLProcess
+         spaces.outfile←tod'S' ''                     ⍝ log file prefix for APLProcess
+         spaces.workdir←tod'S' ''                    ⍝ working directory for APLProcess
          1:1
      }⍣new⊢0
      0::(⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
