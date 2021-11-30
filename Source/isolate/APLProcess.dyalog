@@ -6,7 +6,7 @@
 
     ∇ r←Version
       :Access Public Shared
-      r←'APLProcess' '2.2' '15 June 2021'
+      r←'APLProcess' '2.2.1' '29 November 2021'
     ∇
 
     :Field Public Args←''
@@ -32,6 +32,11 @@
     ∇ r←IsMac
       :Access public shared
       r←'Mac'≡Platform
+    ∇
+
+    ∇ r←IsAIX
+      :Access public shared
+      r←'AIX'≡Platform
     ∇
 
     ∇ r←Platform
@@ -127,7 +132,7 @@
               Proc←SshProc host port keyfile cmd
           :Else
               z←⍕GetCurrentProcessId
-              output←(1+×≢OUT_FILE)⊃'/dev/null'OUT_FILE
+              output←(1+×≢OutFile)⊃'/dev/null'OutFile
               cmd,←'{ ',args,' ',Exe,' +s -q ',ws,' -c APLppid=',z,' </dev/null >',output,' 2>&1 & } ; echo $!'
               pid←_SH cmd
               Proc.Id←pid
@@ -447,18 +452,27 @@
 
     ∇ r←UNIXGetShortCmd pid;cmd
       ⍝ Retrieve sort form of cmd used to start process <pid>
-      cmd←(1+IsMac)⊃'cmd' 'command'
-      cmd←'ps -o ',cmd,' -p ',(⍕pid),' 2>/dev/null ; exit 0'
+      cmd←⊃(IsMac,IsAIX,1)/'comm' 'command' 'cmd'
+      cmd←'-o ',cmd,' -p ',⍕pid
       :If {2::0 ⋄ IsSsh}'' ⍝ instance?
           ∘∘∘
       :Else
-          r←⊃1↓⎕SH cmd
+          :Trap 11
+              r←⊃_PS cmd
+          :Else
+              r←''
+          :EndTrap
       :EndIf
     ∇
 
     ∇ r←_PS cmd;ps
-      ps←'ps ',⍨('AIX'≡3↑⊃'.'⎕WG'APLVersion')/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
-      r←1↓⎕SH ps,cmd,' 2>/dev/null; exit 0'                  ⍝ Remove header line
+      ps←'ps ',⍨IsAIX/'/usr/sysv/bin/'    ⍝ Must use this ps on AIX
+      :Trap 0
+          r←1↓⎕SH ps,cmd,' 2>ps.log; exit 0'                  ⍝ Remove header line
+      :Else
+          (⊂⎕JSON⍠'Compact' 0⊢⎕DMX)⎕NPUT'ps.log' 2
+          ⎕DMX.Message ⎕SIGNAL ⎕DMX.EN
+      :EndTrap
     ∇
 
     ∇ r←{quietly}_SH cmd
