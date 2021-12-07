@@ -4,7 +4,7 @@
 ⍝    Insert isolate.Version to include GIT last commit date
 
  version←'1.3' ⍝ base version
- root←⊃1 ⎕NPARTS ⎕WSID
+ root←(1⊃⎕rsi).path   ⍝ was "⊃1 ⎕NPARTS ⎕WSID"
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
 
  ⍝ Build cover functions with typeable names in #.isolate
