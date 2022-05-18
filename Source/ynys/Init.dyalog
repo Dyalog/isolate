@@ -19,7 +19,7 @@
          ss.retry_limit←99      ⍝ How many retries
          ss.retry_interval←0.05 ⍝ Length of first wait (increases with interval each wait)
          ss.orig←whoami''
-         ss.homeport←7051
+         ss.homeport←op.homeport
          ss.listen←localServer options.listen   ⍝ ⌽⊖'ISOL'
          ss.nextid←2⊃⎕AI                   ⍝ isolate id
          ss.callback←1+(2*15)|+/⎕AI        ⍝ queue for calls back
