@@ -2,9 +2,9 @@
      z←Init 1
      trapErr''::signal''
      n←⍺⍺ fnSpace'f'
-     s←⍴⍺⊢¨⍵
-     i←New¨(×/s)⍴n
-     s⍴⍺ i.f,⍵
+     s←⍴⍺⊢¨⍵ ⍝ Scalar extension
+     i←New¨(t←×/s)⍴n
+     s⍴(t⍴⍺)i.f(t⍴⍵)
 
 ⍝ parallel each
 ⍝ ⍺     [larg]
