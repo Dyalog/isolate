@@ -1,10 +1,11 @@
-﻿ ll←{⍺←⊢
+﻿ ll←{
      z←Init 1
      trapErr''::signal''
      s←⍺⍺ fnSpace'f'
 
      i←New s
-     i.f ⍵
+     0=⎕NC'⍺':i.f ⍵
+     ⍺ i.f ⍵
 
 ⍝ parallel
 ⍝ ⍺     [larg]
