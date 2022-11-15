@@ -4,7 +4,7 @@
      n←⍺⍺ fnSpace'f'
      s←⍴⍺⊢¨⍵
      i←New¨(×/s)⍴n
-     s⍴⍺ i.f(⍴i)⍴⍵
+     s⍴⍺ i.f,⍵
 
 ⍝ parallel each
 ⍝ ⍺     [larg]
