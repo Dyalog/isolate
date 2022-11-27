@@ -1,4 +1,2 @@
 isolate.dws
-Tests/order0.rng.txt
-Tests/order1.rng.txt
-Tests/setups1.rng.txt
+Tests/*.rng.txt
