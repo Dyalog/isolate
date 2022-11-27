@@ -1,7 +1,7 @@
 ﻿ isolates←{⍺←⊢
      ss←session
      source←⍵                    ⍝ ns or wsid
-     receive←(⍕⎕THIS),'.receive'
+     receive←'#.isolate.ynys.receive'
      numid←ss.nextid←ss.nextid+2
      tgt←'#.',chrid←'Iso',⍕numid
 

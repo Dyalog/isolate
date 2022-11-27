@@ -19,7 +19,7 @@
  }
 
 ∇ r←iSend data;send;ev;nm;rc;res;cmd
- send←((⍕iSpace),'.execute')data    ⍝ RPCServer runs this
+ send←'#.isolate.ynys.execute' data    ⍝ RPCServer runs this
  :Trap 0 ⋄ res←iSpace.DRC.Send iD.chrid send
  :Else
      'ISOLATE: Transmission failure'iSpace.qsignal 6
