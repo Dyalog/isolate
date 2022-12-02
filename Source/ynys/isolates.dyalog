@@ -1,7 +1,7 @@
-﻿ isolates←{⍺←⊢
+isolates←{⍺←⊢
      ss←session
      source←⍵                    ⍝ ns or wsid
-     receive←'#.isolate.ynys.receive'
+     receive←'#.isolate.ynys.receive'  ⍝ abs ns path known in remote ws
      numid←ss.nextid←ss.nextid+2
      tgt←'#.',chrid←'Iso',⍕numid
 
