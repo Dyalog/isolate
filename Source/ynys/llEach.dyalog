@@ -1,10 +1,10 @@
-﻿ llEach←{⍺←⊢
+﻿llEach←{⍺←⊢
      z←Init 1
      trapErr''::signal''
      n←⍺⍺ fnSpace'f'
-     s←⍴⍺⊢¨⍵
-     i←New¨(×/s)⍴n
-     s⍴⍺ i.f ⍵  
+     s←⍴⍺⊢¨⍵ ⍝ Scalar extension
+     i←New¨s⍴n
+     ⍺ i.f ⍵
 
 ⍝ parallel each
 ⍝ ⍺     [larg]
