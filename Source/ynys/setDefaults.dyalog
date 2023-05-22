@@ -21,8 +21,9 @@
          spaces.status←tod'S' 'client' 'server'    ⍝ set as 'server' by StartServer
          spaces.workspace←tod'S'(getDefaultWS'isolate.dws') ⍝ load current ws for remotes?
          spaces.rideinit←tod'S' ''                 ⍝ RIDE_INIT for APLProcess
-         spaces.outfile←tod'S' ''                     ⍝ log file prefix for APLProcess
-         spaces.workdir←tod'S' ''                    ⍝ working directory for APLProcess
+         spaces.outfile←tod'S' ''                  ⍝ log file prefix for APLProcess
+         spaces.workdir←tod'S' ''                  ⍝ working directory for APLProcess
+         spaces.cmdargs←tod'S' 'ENABLE_CEF=0'      ⍝ add to command line
          1:1
      }⍣new⊢0
      0::(⊃⍬⍴⎕DMX.DM)⎕SIGNAL ⎕DMX.EN
