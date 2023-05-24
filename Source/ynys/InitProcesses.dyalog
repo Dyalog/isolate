@@ -8,6 +8,7 @@
  :EndIf
  iso←('isolate=isolate onerror=',(⍕op.onerror),' isoid=',(⍕ss.callback),maxws)
  iso,←' protocol=',op.protocol,' quiet=1'
+ iso,←' ',op.cmdargs
  :If ws∨.≠' ' ⋄ ws←1⌽'""',checkWs addWSpath ws ⋄ :EndIf ⍝ if no path ('\/')
  ports←ss.homeport+1+⍳op.(processors×processes)
 
