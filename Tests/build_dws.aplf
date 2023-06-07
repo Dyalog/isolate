@@ -1,0 +1,11 @@
+﻿ r←build_dws nul;Home;res
+ r←⍬
+ :Trap 0
+     ⎕SE ⎕SE.UCMD'DBuild ',(2⎕nq'.' 'GetEnvironment' 'BUILDFILE'),' -clear -production -save -off -quiet=0'   ⍝ passes ⎕SE as ⍺ to UCMD to avoid ref-trouble with DBuild's ⎕SAVE
+ :Else
+     (⎕JSON ⎕OPT'Compact' 0)⎕DMX
+ :EndTrap
+⍝ this might be useful when testing
+⍝ ⎕←'Enter to continue'
+⍝ ⍞
+⎕OFF 11
