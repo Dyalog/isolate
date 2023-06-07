@@ -1,7 +1,7 @@
- z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack;n2;isDTest162
+ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack;n2
  ⍝ Take futures and isolates for a little spin
 
- rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log
+ ⍝rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log   (MB: this seems to be fixed now)
  {}#.isolate.Config'listen' 0
  {}#.isolate.Config'processors' 4
 
@@ -9,11 +9,7 @@
 
  test←'Basic IÏ test'
  double←{⍵+⍵}#.IÏ⍳4
- :If isDTest162←1.62≤{2⊃⎕VFI(2>+\⍵='.')/⍵}2⊃(1⊃⎕RSI).Version   ⍝ v1.62 added the ability to distinguish Info/Warning/Errors with Log
-     WARN←{('Type' 'W')Log ⍵}
- :Else
-     WARN←{Log'*** Warning: ',⍵}
- :EndIf
+
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double

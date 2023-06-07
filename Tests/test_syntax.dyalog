@@ -42,7 +42,7 @@
  :Trap 2
      ns.mat[3;]←is.mat[3;]←⍳4   ⍝ /// This fails
  :Else
-     Log'Still not fixed: http://mantis.dyalog.com/view.php?id=11096'
+     WARN'Still not fixed: http://mantis.dyalog.com/view.php?id=11096'
  :EndTrap
 
  ⍝ Now test failing cases
