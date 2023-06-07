@@ -1,4 +1,4 @@
 {
-    "DyalogVersions": "18+u,19+",
+    "DyalogVersions": "18+",
     "Test": "./Tests/all.dyalogtest",  
 }
