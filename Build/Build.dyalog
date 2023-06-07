@@ -1,12 +1,23 @@
- Build;file;ver;src;t;version;rev;path;root;buildver;date;db;glyph;nr;name;warn
+ Build;file;ver;src;t;version;rev;path;root;buildver;date;db;glyph;nr;name;warn;v;vs;Split;dlb
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in #.isolate
 ⍝    Insert isolate.Version to include GIT last commit date
 
  version←'1.3' ⍝ base version
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
- root←db.path  
+ root←db.path
  warn←''
+                  ⍝ Split ⍵ on ⍺, and remove leading blanks from each segment
+ dlb←{(∨\' '≠⍵)/⍵}                                ⍝ delete leading blanks          
+ Split←{dlb¨1↓¨(1,⍵∊⍺)⊂(⊃⍺),⍵}                    ⍝ Split ⍵ on ⍺, and remove leading blanks from each segment
+
+ ⎕SE.SALT.Load'[DYALOG]Library/Core/APLProcess -target=#.isolate'
+⍝ check if APLProcess.Version>2.2.7 and signal error if not...
+ vs←2⊃#.isolate.APLProcess.Version
+ v←∊2⊃¨⎕VFI¨'.'Split vs
+ :If 1≠v{⍺≡⍵:0 ⋄ ⍺[1]<⍵[1]:¯1 ⋄ ⍺[1]>⍵[1]:1 ⋄ (1↓⍺)∇ 1↓⍵}2 2 7
+     ('#.isolate.APLProcess.Version was not greater than expected minimum version 2.2.7, Value:"',vs,'"')⎕SIGNAL 11
+ :EndIf
 
  ⍝ Build cover functions with typeable names in #.isolate
  :For glyph name :In ('II' 'll')('IIÐ' 'llKey')('IIö' 'llRank')('IÏ' 'llEach')('o_II' 'llOuter')
@@ -26,10 +37,10 @@
         ⍝ MBaas: signalling an error means build-failure -> only do that when we build for production, but be tolerant when we build for tests
          :If 2=db.⎕NC'prod'
          :AndIf db.prod
-         :andif 'DTEST'≢2⎕nq#'GetEnvironment' 'BUILDINFO'
+         :AndIf 'DTEST'≢2 ⎕NQ #'GetEnvironment' 'BUILDINFO'
              'isolate Build: Unable to get GIT last commit date - isolate. Version not set!'⎕SIGNAL 11
          :Else
-             warn←'isolate Build: Unable to get GIT last commit date ! '  
+             warn←'isolate Build: Unable to get GIT last commit date ! '
              date←''
          :EndIf
      :EndIf

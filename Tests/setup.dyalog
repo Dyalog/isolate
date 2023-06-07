@@ -2,7 +2,7 @@
 ⍝ Setup for isolate tests - reset any settings to defaults
  :If 0=#.⎕NC'isolate'
      'isolate'#.⎕NS''
-     ⎕SE.SALT.Load ##.TESTSOURCE,'../Source/isolate/APLProcess -target=#.isolate'
+     ⎕SE.SALT.Load'[DYALOG]Library/Core/APLProcess -target=#.isolate'
  :EndIf
  isoDir←1⊃1 ⎕NPARTS ¯1↓1⊃⎕NPARTS ##.TESTSOURCE
  :If ~⎕NEXISTS dws←isoDir,'isolate.dws'
