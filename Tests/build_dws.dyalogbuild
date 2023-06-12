@@ -1,0 +1,9 @@
+DYALOG BUILD:1
+ID: build_dws, Version=1
+
+⍝ can't set ⎕LX using LX because we need to build it using a variable from the dbuild environment
+EXEC: ⎕LX←'2⎕fix''file://',(1⊃⎕rsi).path,'build_dws.aplf'' ⋄ build_dws⍬'
+
+DEFAULTS: ⎕ML←1 ⋄ ⎕IO←1
+
+TARGET: ./build_dws ,save=1

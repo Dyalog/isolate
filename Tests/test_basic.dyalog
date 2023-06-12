@@ -1,7 +1,7 @@
-﻿ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack;n2
+ z←test_basic dummy;time;delta;is;ns;test;dfns;double;rtack;n2
  ⍝ Take futures and isolates for a little spin
 
- rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log
+ ⍝rtack←⍎⎕UCS 8866 ⍝ // work aroung bug in Log   (MB: this seems to be fixed now)
  {}#.isolate.Config'listen' 0
  {}#.isolate.Config'processors' 4
 
@@ -13,7 +13,7 @@
  ⎕DL 0.5
  :If 2 4 6 8≢double
  :AndIf 2 4 6 8≡⊃¨double
-     Log'*** WARNING: Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
+     WARN'Still not fixed: http://mantis.dyalog.com/view.php?id=15672'
  :EndIf
 
  double←⊃¨double
@@ -24,21 +24,21 @@
  :Trap 0 ⍝ https://github.com/Dyalog/isolate/issues/17
      test Fail 4 Check 2+#.II 2
  :Else
-     Log'*** WARNING: Still not fixed: https://mantis.dyalog.com/view.php?id=20113'
+     WARN'Still not fixed: https://mantis.dyalog.com/view.php?id=20113'
  :EndTrap
 
  test Fail(,'4')Check⍕2+#.II 2 ⍝ https://github.com/Dyalog/isolate/issues/17
 
  time←3⊃⎕AI ⋄ z←⎕DL #.IÏ 4⍴1
  :If 100<delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
-     Log'*** WARNING: IÏ took ',(⍕delta),' ms to return futures.'
+     WARN'Futures took ',(⍕delta),' ms to materialise.'
  :EndIf
  z←+/z ⍝ will block
  '⎕DL IÏ 4⍴1 ran in less than 1 second'Fail 1000>delta←(3⊃⎕AI)-time
 
  time←3⊃⎕AI ⋄ z←⎕DL #.II 1   ⍝ https://github.com/Dyalog/isolate/issues/16
  :If 100<delta←(3⊃⎕AI)-time ⍝ Getting a future back should take <100ms
-     Log Log'*** WARNING: II took ',(⍕delta),' ms to return futures.'
+     WARN'II took ',(⍕delta),' ms to return futures.'
  :EndIf
  z←+/z ⍝ will block
  '⎕DL II 1 ran in less than 1 second'Fail 1000>delta←(3⊃⎕AI)-time
@@ -46,7 +46,7 @@
  ⍝ Check that passing argument to defined functions does not block...
  time←3⊃⎕AI ⋄ z←{⍵ ⍵}⎕DL #.IÏ 1
  :If 100<delta←(3⊃⎕AI)-time ⍝ Getting futures back should take <100ms
-     Log'*** WARNING: Futures took ',(⍕delta),' ms to materialise.'
+     WARN'Futures took ',(⍕delta),' ms to materialise.'
  :EndIf
  z←+/z                         ⍝ This should block
  '+/{⍵ ⍵}⎕DL IÏ 1 ran in less than 1 second'Fail 1000>delta←(3⊃⎕AI)-time
