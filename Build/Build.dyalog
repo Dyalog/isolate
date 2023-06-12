@@ -9,13 +9,12 @@
  warn←''
                   ⍝ Split ⍵ on ⍺, and remove leading blanks from each segment
  dlb←{(∨\' '≠⍵)/⍵}                                ⍝ delete leading blanks          
- Split←{dlb¨1↓¨(1,⍵∊⍺)⊂(⊃⍺),⍵}                    ⍝ Split ⍵ on ⍺, and remove leading blanks from each segment
 
  ⎕SE.SALT.Load'[DYALOG]Library/Core/APLProcess -target=#.isolate'
 ⍝ check if APLProcess.Version>2.2.7 and signal error if not...
  vs←2⊃#.isolate.APLProcess.Version
- v←∊2⊃¨⎕VFI¨'.'Split vs
- :If 1≠v{⍺≡⍵:0 ⋄ ⍺[1]<⍵[1]:¯1 ⋄ ⍺[1]>⍵[1]:1 ⋄ (1↓⍺)∇ 1↓⍵}2 2 7
+ v←2⊃'.'⎕VFI vs
+ :If ~vs{⍺≡⍵: 0⋄ 2=1⊃⍋(⊂⍺),⊂⍵}2 2 7
      ('#.isolate.APLProcess.Version was not greater than expected minimum version 2.2.7, Value:"',vs,'"')⎕SIGNAL 11
  :EndIf
 
@@ -37,7 +36,7 @@
         ⍝ MBaas: signalling an error means build-failure -> only do that when we build for production, but be tolerant when we build for tests
          :If 2=db.⎕NC'prod'
          :AndIf db.prod
-         :AndIf 'DTEST'≢2 ⎕NQ #'GetEnvironment' 'BUILDINFO'
+         :AndIf 0<≢2 ⎕NQ #'GetEnvironment' 'NODATENEEDED'   ⍝ NODATENEEDED indicates that the production build does not need to have a date (we use this when running tests)
              'isolate Build: Unable to get GIT last commit date - isolate. Version not set!'⎕SIGNAL 11
          :Else
              warn←'isolate Build: Unable to get GIT last commit date ! '
