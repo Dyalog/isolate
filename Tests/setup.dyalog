@@ -7,39 +7,17 @@
  isoDir←1⊃1 ⎕NPARTS ¯1↓1⊃⎕NPARTS ##.TESTSOURCE
  :If ~⎕NEXISTS dws←isoDir,'isolate.dws'
      ('Type' 'I')Log'Could not find ',dws,' -> building it now'
-     nl←⎕UCS 10
-     :Repeat
-          ⍝ tmp←(739⌶0),'/',(⎕A,⎕D)[?10⍴36],'/StartupSession/'
-         tmp←(739⌶0),'/DBuild_isolate_',(⎕A,⎕D)[?10⍴36],'/'
-     :Until ~⎕NEXISTS tmp
-     3 ⎕MKDIR tmp
 
-     code←1⊃⎕NGET ##.TESTSOURCE,'build_dws.aplf'
-     code←'Setup',nl,{(⍵⍳⎕UCS 10)↓⍵}code     ⍝  replace original function header so that our function is niladic "Setup" (don't care about locals as we quit afterwards anyway)
-     (⊂code)⎕NPUT tmp,'setup.dyalog'
-
-     ⍝ the following hack is only needed when running locally on a developer's machine which may have a setup fn.
-     ⍝ we need to rename the default setup command so that ours is the only one executed
-     :If renamed_setup←⎕NEXISTS usf←⎕SE.SALTUtils.USERDIR,'MyUCMDS/setup.dyalog'    
-         ⎕nuntie (usf,'.tmp')⎕NRENAME usf ⎕ntie 0
-     :EndIf
-
-     ⍝ the parameter BUILDINFO is checked in Build/Build.dyalog and avoids cancellation of build (because we can't query git details in test env)
-     a←⎕NEW #.isolate.APLProcess(''('BUILDINFO=DTEST BUILDFILE="',isoDir,'isolate.dyalogbuild" SALT_SourceFolder=',tmp,' LOG_FILE="',##.TESTSOURCE,'build_dws.dlf"'))
+   ⍝ the parameter NODATENEEDED is checked in Build/Build.dyalog and avoids cancellation of build (because we can't query git details in test env) (we don't check for a specific value, any value will do)
+     a←⎕NEW #.isolate.APLProcess((isoDir,'/Tests/build_dws')('NODATENEEDED=yup BUILDFILE="',isoDir,'isolate.dyalogbuild" LOG_FILE="',##.TESTSOURCE,'build_dws.dlf"'))
      :Repeat
          ⎕DL 1
      :Until a.HasExited  ⍝ wait until job has finished
-
-     ⍝ restore original setup command
-     :If renamed_setup
-         ⎕nuntie usf ⎕NRENAME (usf,'.tmp') ⎕ntie 0
-     :EndIf
 
      :If ~⎕NEXISTS dws   ⍝ and quit if ws still not found
          r←'Running "',##.TESTSOURCE,'build_dws.aplf" did not build "',dws,'". Check file ',##.TESTSOURCE,'build_dws.log'
          →0
      :EndIf
-     3 ⎕NDELETE tmp      ⍝ remove that tmp folder
  :EndIf
 
  #.⎕CY dws
