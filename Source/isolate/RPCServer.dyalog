@@ -1,4 +1,4 @@
-﻿:Namespace RPCServer
+:Namespace RPCServer
     (⎕IO ⎕ML)←1 1
     SendProgress←0
     Protocol←''      ⍝ Set to IPv4 or IPv6 to lock in
@@ -74,7 +74,10 @@
       allowremote←GetEnv 'AllowRemote' ⍝ Remote access
       allowremote←(0≠≢allowremote)/{1↓¨(⍵=',')⊂⍵}',',allowremote
      
-      z←##.DRC.Init''
+      :If 9.2≠##.⎕NC⊂'DRC' ⍝ if DRC is not an instance of Conga.LIB
+          z←##.DRC.Init''
+      :EndIf
+     
       localaddrs←⊃⍪/{0::0 3⍴⊂⍬ ⋄ DNSLookup ⍵}¨'' 'localhost' ⍝ Find all local addresses
       :If 0=≢localaddrs ⍝ /// paranoia: the above SHOULD work
           localaddrs←1 3⍴'IPv4' '127.0.0.1'(127 0 0 1)
