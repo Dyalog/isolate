@@ -1,4 +1,4 @@
-﻿ {r}←{allowremote}Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts;t
+ {r}←{allowremote}Init local;here;z;ss;op;maxws;ws;rt;iso;ports;pids;pclts;t
  r←⎕THIS.⎕IO←0
  :If 0=⎕NC'allowremote' ⋄ allowremote←⍬ ⋄ :EndIf
  :If newSession''
@@ -12,7 +12,8 @@
      z←getSet'debug'op.debug    ⍝ on or off
      :Trap trapErr''
          ##.DRC←here.DRC←getDRC op.drc
-         :If ~(⊃z←DRC.Init ⍬)∊0
+         :If 9.2≠⎕NC⊂'DRC' ⍝ if DRC is not an instance of Conga.LIB
+         :AndIf ~(⊃z←DRC.Init ⍬)∊0
              ('CONGA INIT FAILED: ',,⍕z)⎕SIGNAL 11
          :EndIf
          z←DRC.SetProp'.' 'Protocol'(op.protocol)

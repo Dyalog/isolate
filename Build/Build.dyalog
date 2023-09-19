@@ -3,7 +3,7 @@
 ⍝    Build cover-functions in #.isolate
 ⍝    Insert isolate.Version to include GIT last commit date
 
- version←'1.3' ⍝ base version
+ version←'1.5' ⍝ base version - change here and in ../isolate.dyalogbuild
  root←(1⊃⎕rsi).path   ⍝ was "⊃1 ⎕NPARTS ⎕WSID"
  db←⊃⎕RSI ⍝ Ref to DyalogBuild environment
 
