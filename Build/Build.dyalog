@@ -1,13 +1,18 @@
-﻿ Build;version;db;root;warn;ver;vn;glyph;name;nr;date
+﻿ Build;version;db;root;warn;ver;vn;glyph;name;nr;date;dir;getEnv
 ⍝ As part of running isolate.dbuild, tweak the workspace a bit:
 ⍝    Build cover-functions in #.isolate
 ⍝    Insert isolate.Version to include GIT last commit date
+ getEnv←{2 ⎕NQ'.' 'GetEnvironment'⍵}
  version←'1.5' ⍝ base version - update this whenever there is a version bump
  db←1⊃⎕RSI ⍝ Ref to DyalogBuild environment
  root←db.path
  warn←''
  #.isolate.⎕EX'APLProcess' ⍝ make sure any APLProcess loaded from isolate is expunged
- ⎕SE.SALT.Load'[DYALOG]Library/Core/APLProcess -target=#.isolate' ⍝ load the "official" APLProcess
+ :If 0∊⍴dir←getEnv'MK_LIBRARY_CORE'
+ :OrIf ~⎕NEXISTS dir
+     dir←'[DYALOG]/Library/Core/'
+ :EndIf
+ ⎕SE.SALT.Load dir,'APLProcess -target=#.isolate' ⍝ load the "official" APLProcess
 ⍝ check if APLProcess.Version>2.2.7 and signal error if not...
  ver←2⊃#.isolate.APLProcess.Version
  vn←2⊃'.'⎕VFI ver
