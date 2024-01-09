@@ -10,9 +10,9 @@
  #.isolate.⎕EX'APLProcess' ⍝ make sure any APLProcess loaded from isolate is expunged
  :If 0∊⍴dir←getEnv'MK_LIBRARY_CORE'
  :OrIf ~⎕NEXISTS dir
-     dir←'[DYALOG]/Library/Core/'
+     dir←'[DYALOG]/Library/Core'
  :EndIf
- ⎕SE.SALT.Load dir,'APLProcess -target=#.isolate' ⍝ load the "official" APLProcess
+ ⎕SE.SALT.Load dir,'/APLProcess -target=#.isolate' ⍝ load the "official" APLProcess
 ⍝ check if APLProcess.Version>2.2.7 and signal error if not...
  ver←2⊃#.isolate.APLProcess.Version
  vn←2⊃'.'⎕VFI ver
