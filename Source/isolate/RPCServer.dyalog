@@ -156,7 +156,7 @@
       :If 0=⎕NC'start' ⋄ start←1 ⋄ :EndIf         ⍝ start may be (start quiet)
       rt←'R'∊'.'⎕WG'APLVersion'                   ⍝ Runtime or DLLRT
       (start quiet autoshut)←0 rt 0∨3↑start
-      {}##.DRC.Init''
+      
       :If (⊂Protocol)∊'IPv4' 'IPv6' ⋄ ##.DRC.SetProp'.' 'Protocol'Protocol ⋄ :EndIf
      
       :If start
