@@ -1,10 +1,10 @@
-﻿:Namespace ll
+:Namespace ll
 ⍝ Parallel Extensions
-    
+
     (⎕IO ⎕ML ⎕WX)←1 1 3
-        
+
     Each←{⍺←⊢ ⋄ ⍺ (⍺⍺ EachX ⍬) ⍵}
-       
+
     ∇ r←{left}(fns EachX iss)right;dyadic;fn;cb;n;counts;shape;ni;i;count;done;failed;next;callbk;expr;z;PF;cblarg;cancelled;cbprovided;noIso;cr
     ⍝ IÏ using queueing on persistent Isolates:
     ⍝
@@ -25,7 +25,7 @@
       :If noIso←0=≢iss ⋄ iss←⊂'' ⋄ :EndIf ⍝ No isolate passed
      
       :If 3=⎕NC'fns'          ⍝ A real function?
-          :If 1=⍴⍴cr←⎕CR'fns' ⋄ fns←(⊃cr)''⊣⎕EX'fns' ⋄ ⍝ primitive?
+          :If 1=⍴⍴cr←⎕CR'fns' ⋄ fns←cr''⊣⎕EX'fns' ⋄ ⍝ primitive?
           :Else
               :If noIso ⋄ iss←⎕NS'' ⋄ :EndIf
               fn←⊃(,iss).⎕FX⊂⎕CR'fns'
@@ -41,7 +41,7 @@
       :If cbprovided←2=≡fns   ⍝ We MAY have a callback function
           (fn cb cblarg)←3↑fns,'' ''
           cbprovided←cb∨.≠' ' ⍝ We DO have a callback function
-          cblarg,←(0=≢cblarg)/'ll.Each Progress - ',fn,' (',(⍕×/⍴right),')'
+          cblarg,←(0=≢cblarg)/'ll.Each Progress - ',(⍕fn),' (',(⍕×/⍴right),')'
       :Else ⍝ No callback function defined
           fn←fns ⋄ (cb cblarg)←'' 'll.Each Progress'
       :EndIf
@@ -63,8 +63,8 @@
       n←⍴right←,right ⋄ :If dyadic ⋄ left←,left ⋄ :EndIf
       counts←ni⍴0 ⋄ done←failed←n⍴count←0
       r←n⍴⎕NULL
-          
-      expr←(dyadic/'(next⊃left) '),'iso.{',(dyadic/'⍺ '),fn,' ⍵} next⊃right'
+     
+      expr←(dyadic/'(next⊃left) '),'iso.{',(dyadic/'⍺ '),'(',(⍕fn),') ⍵} next⊃right'
       cancelled←0
       :If 1=≢iss ⍝ Only one: do it in main thread
           z←1 run1iso⊃iss
@@ -73,7 +73,7 @@
       :EndIf
       ⎕SIGNAL cancelled/6
     ∇
-              
+
     ∇ r←PEACHForm(caption nprocs nitems);p;labels;pos;pb;n
     ⍝ Make a progress form with a progress bar per process and one for the total
      
@@ -103,20 +103,20 @@
           abort←1 ⍝ User killed the GUI
       :EndTrap
     ∇
-    
-    ∇z←isoix run1iso iso;next
+
+    ∇ z←isoix run1iso iso;next
      ⍝ drive isolate #iso until we are done
      ⍝ NB semi-globals from EachX: r n count counts bclarg callbk cancelled
-
-     z←0
-     :While n≥next←count←count+1 ⍝ no more to do
-         r[next]←⊂⍎expr
-         counts[isoix]+←1
-         z←{0::failed[⍵]←1 ⋄ done[⍵]←1⊣+r[⍵]}next ⍝ Reference it 
-         :If cblarg callbk counts,count⌊n 
-            →0⊣z←''⊣cancelled←1
-         :EndIf
-     :EndWhile
-    ∇             
+     
+      z←0
+      :While n≥next←count←count+1 ⍝ no more to do
+          r[next]←⊂⍎expr
+          counts[isoix]+←1
+          z←{0::failed[⍵]←1 ⋄ done[⍵]←1⊣+r[⍵]}next ⍝ Reference it
+          :If cblarg callbk counts,count⌊n
+              →0⊣z←''⊣cancelled←1
+          :EndIf
+      :EndWhile
+    ∇
 
 :EndNamespace
