@@ -3,7 +3,7 @@
 ⍝    Build cover-functions in #.isolate
 ⍝    Insert isolate.Version to include GIT last commit date
  getEnv←{2 ⎕NQ'.' 'GetEnvironment'⍵}
- version←'1.5' ⍝ base version - update this whenever there is a version bump
+ version←'1.6' ⍝ base version - update this whenever there is a version bump
  db←1⊃⎕RSI ⍝ Ref to DyalogBuild environment
  root←db.path
  warn←''
