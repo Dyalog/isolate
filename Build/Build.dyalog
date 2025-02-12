@@ -16,7 +16,7 @@
 ⍝ check if APLProcess.Version>2.2.7 and signal error if not...
  ver←2⊃#.isolate.APLProcess.Version
  vn←2⊃'.'⎕VFI ver
- :If vn{1↑⊃≥/(<\⍺≠⍵)∘/¨⍺ ⍵}2 2 8 ⍝ minimum version should be 2.2.8
+ :If ¯1=vn(×2⊥×⍤-)2 2 8 ⍝ minimum version should be 2.2.8
      ('APLProcess.Version should be 2.2.8 or greater, it is currently: ',ver)⎕SIGNAL 11
  :EndIf
  ⍝ Build cover functions with typeable names in #.isolate
